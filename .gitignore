@@ -16,3 +16,67 @@ _site/
 # counterproductive to check this file into the repository.
 # Details at https://github.com/github/pages-gem/issues/768
 Gemfile.lock
+
+# JavaScript dependencies and package-manager logs
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-debug.log*
+
+# React Web and Vue.js build output and caches
+dist/
+build/
+.vite/
+.next/
+out/
+.nuxt/
+.output/
+.parcel-cache/
+.turbo/
+.eslintcache
+*.tsbuildinfo
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Local environment variables
+.env
+.env.*
+!.env.example
+!.env.*.example
+!.env.sample
+!.env.*.sample
+!.env.template
+!.env.*.template
+
+# React Native and Expo
+.expo/
+.expo-shared/
+expo-env.d.ts
+web-build/
+*.apk
+*.aab
+*.ipa
+.gradle/
+.cxx/
+Pods/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.jks
+*.keystore
+*.p8
+*.p12
+*.mobileprovision
+
+# Uncomment for Expo projects that regenerate native folders with Prebuild.
+# /android/
+# /ios/
+
+# Local IDE and operating system files
+.idea/
+.DS_Store
+Thumbs.db
