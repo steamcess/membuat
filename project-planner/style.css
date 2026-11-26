@@ -50,7 +50,7 @@ h1 span { color: #c7adff; }
 .panel h2 { font-size: clamp(1.65rem,3.2vw,2.5rem); line-height: 1.14; letter-spacing: -.045em; font-weight: 650; }
 .hint { color: var(--muted); margin: .65rem 0 1.3rem; line-height: 1.55; }
 #answer-area { display: grid; gap: .6rem; }
-.option { display: flex; align-items: center; gap: .8rem; min-height: 3.3rem; padding: .75rem; border: 1px solid var(--border); border-radius: .7rem; cursor: pointer; font-weight: 550; }
+.option { overflow-wrap: anywhere; display: flex; align-items: center; gap: .8rem; min-height: 3.3rem; padding: .75rem; border: 1px solid var(--border); border-radius: .7rem; cursor: pointer; font-weight: 550; }
 .option:hover { background: #faf8fe; border-color: #b2a1cf; }
 .option:has(:checked) { border-color: var(--accent); background: #f5efff; }
 .option input { order: 1; margin-left: auto; width: 1rem; height: 1rem; accent-color: var(--accent); flex: none; }
