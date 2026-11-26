@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Project Planner</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="script.js" defer></script>
+  </head>
+  <body>
+    <main class="container">
+      <header class="header">
+        <h1>Project Planner</h1>
+        <p class="subtitle">Jawab satu per satu, hasil akhirnya berupa prompt siap pakai untuk AI.</p>
+      </header>
+
+      <section id="quiz" aria-live="polite">
+        <div class="progress" aria-hidden="true">
+          <div id="progress-bar" class="progress-bar"></div>
+        </div>
+        <p id="progress-text" class="progress-text"></p>
+        <p id="section-name" class="section-name"></p>
+
+        <form id="question-form" novalidate>
+          <label id="question-label" class="question-label"></label>
+          <p id="question-hint" class="hint"></p>
+          <div id="answer-area" class="answer-area"></div>
+          <p id="error" class="error" role="alert"></p>
+
+          <div class="actions">
+            <button id="back-button" type="button" class="secondary">Kembali</button>
+            <button id="skip-button" type="button" class="secondary">Lewati</button>
+            <button id="submit-button" type="submit">Lanjut</button>
+          </div>
+        </form>
+      </section>
+
+      <section id="result" hidden>
+        <h2>Prompt kamu sudah siap</h2>
+        <p class="hint">Salin prompt di bawah, lalu tempel ke AI pilihanmu. Kamu juga bisa mengeditnya dulu.</p>
+        <textarea id="result-text" rows="18" spellcheck="false"></textarea>
+        <div class="actions">
+          <button id="edit-button" type="button" class="secondary">Ubah jawaban</button>
+          <button id="restart-button" type="button" class="danger">Mulai ulang</button>
+          <button id="copy-button" type="button">Salin prompt</button>
+        </div>
+        <p id="copy-message" class="copy-message" aria-live="polite"></p>
+      </section>
+    </main>
+  </body>
+</html>
