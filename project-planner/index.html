@@ -1,51 +1,47 @@
 <!doctype html>
 <html lang="id">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Project Planner</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="script.js" defer></script>
-  </head>
-  <body>
-    <main class="container">
-      <header class="header">
-        <h1>Project Planner</h1>
-        <p class="subtitle">Jawab satu per satu, hasil akhirnya berupa prompt siap pakai untuk AI.</p>
-      </header>
-
-      <section id="quiz" aria-live="polite">
-        <div class="progress" aria-hidden="true">
-          <div id="progress-bar" class="progress-bar"></div>
-        </div>
-        <p id="progress-text" class="progress-text"></p>
-        <p id="section-name" class="section-name"></p>
-
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f7fa">
+  <title>Project Planner</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="script.js" defer></script>
+</head>
+<body>
+  <header class="top"><div class="shell bar">
+    <div class="brand"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>Project Planner</div>
+    <span class="save-state" id="save-state">Draf lokal</span>
+  </div></header>
+  <main class="shell">
+    <header class="hero">
+      <div class="hero-copy"><h1>Rancang proyekmu<span>.</span></h1><p>Susun ide, pilih kebutuhan, dan dapatkan gambaran awal proyekmu.</p></div>
+      <div class="art" aria-hidden="true"><div class="sheet base"></div><div class="sheet middle"></div><div class="sheet front"><i></i><b></b><em></em></div></div>
+    </header>
+    <div class="workspace">
+      <aside class="outline"><div class="outline-title"><h2>Alur perencanaan</h2><span id="percent"></span></div>
+        <div class="progress" aria-hidden="true"><div id="progress-bar"></div></div>
+        <ol id="sections" aria-label="Bagian perencanaan"></ol>
+      </aside>
+      <section id="quiz" class="panel">
+        <div class="panel-meta"><span id="section-name"></span><span id="progress-text"></span></div>
         <form id="question-form" novalidate>
-          <label id="question-label" class="question-label"></label>
-          <p id="question-hint" class="hint"></p>
-          <div id="answer-area" class="answer-area"></div>
-          <p id="error" class="error" role="alert"></p>
-
-          <div class="actions">
-            <button id="back-button" type="button" class="secondary">Kembali</button>
-            <button id="skip-button" type="button" class="secondary">Lewati</button>
-            <button id="submit-button" type="submit">Lanjut</button>
-          </div>
+          <h2 id="question-label" tabindex="-1"></h2><p id="question-hint" class="hint"></p>
+          <div id="answer-area" role="group" aria-labelledby="question-label" aria-describedby="question-hint"></div>
+          <label class="note-label" for="note">Informasi tambahan <span>Opsional</span></label>
+          <textarea id="note" rows="2" placeholder="Tulis detail atau jawabanmu sendiri…"></textarea>
+          <p id="error" role="alert"></p>
+          <div class="actions"><button id="back-button" class="secondary" type="button">Kembali</button><button id="skip-button" type="button" class="secondary">Lewati</button><button id="submit-button" type="submit">Lanjut</button></div>
         </form>
       </section>
-
-      <section id="result" hidden>
-        <h2>Prompt kamu sudah siap</h2>
-        <p class="hint">Salin prompt di bawah, lalu tempel ke AI pilihanmu. Kamu juga bisa mengeditnya dulu.</p>
-        <textarea id="result-text" rows="18" spellcheck="false"></textarea>
-        <div class="actions">
-          <button id="edit-button" type="button" class="secondary">Ubah jawaban</button>
-          <button id="restart-button" type="button" class="danger">Mulai ulang</button>
-          <button id="copy-button" type="button">Salin prompt</button>
-        </div>
-        <p id="copy-message" class="copy-message" aria-live="polite"></p>
+      <section id="result" class="panel" hidden>
+        <h2 id="result-title" tabindex="-1">Gambaran proyekmu siap.</h2>
+        <p class="hint">Kamu bisa mengedit ringkasan ini, lalu menyalinnya sebagai prompt untuk AI.</p>
+        <textarea id="result-text" aria-label="Ringkasan dan prompt proyek" rows="18"></textarea>
+        <div class="actions"><button id="edit-button" class="secondary">Ubah jawaban</button><button id="restart-button" class="secondary">Mulai ulang</button><button id="copy-button">Salin prompt</button></div>
+        <p id="copy-message" role="status"></p>
       </section>
-    </main>
-  </body>
+    </div>
+  </main>
+</body>
 </html>

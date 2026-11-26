@@ -7,8 +7,8 @@ const questions = [
     section: "Ide Utama",
     name: "Ide proyek",
     label: "Apa yang ingin kamu buat?",
-    hint: "Ceritakan dengan bebas, tidak perlu rapi. Contoh: aplikasi untuk mencatat hasil cek kesehatan saya.",
-    type: "textarea",
+    type: "choice",
+    options: ["Pencatat aktivitas", "Pengelola tugas", "Katalog produk", "Dasbor data"],
   },
   {
     id: "appType",
@@ -17,15 +17,14 @@ const questions = [
     label: "Aplikasi ini berbentuk apa?",
     type: "choice",
     options: ["Web app", "Website statis (landing page, profil, blog)", "Aplikasi mobile", "Aplikasi desktop", "API / backend saja"],
-    other: true,
   },
   {
     id: "problem",
     section: "Ide Utama",
     name: "Masalah yang diselesaikan",
     label: "Masalah apa yang ingin diselesaikan oleh aplikasi ini?",
-    hint: "Bagaimana kamu mengerjakannya sekarang, dan apa yang merepotkan?",
-    type: "textarea",
+    type: "multi",
+    options: ["Pencatatan masih manual", "Informasi tersebar", "Sulit memantau progres", "Koordinasi memakan waktu"],
     optional: true,
   },
   {
@@ -35,7 +34,6 @@ const questions = [
     label: "Siapa yang akan memakai aplikasi ini?",
     type: "choice",
     options: ["Hanya saya sendiri", "Saya dan keluarga / teman", "Tim kecil", "Publik / banyak orang"],
-    other: true,
   },
   {
     id: "auth",
@@ -44,23 +42,22 @@ const questions = [
     label: "Apakah perlu login?",
     type: "choice",
     options: ["Tidak perlu login", "Email dan password", "Login dengan Google"],
-    other: true,
   },
   {
     id: "features",
     section: "Fitur",
     name: "Fitur utama",
     label: "Apa saja fitur utama yang wajib ada?",
-    hint: "Tulis satu fitur per baris. Contoh: input data, lihat riwayat, grafik perkembangan.",
-    type: "textarea",
+    type: "multi",
+    options: ["Input dan edit data", "Riwayat aktivitas", "Pencarian dan filter", "Laporan ringkas"],
   },
   {
     id: "extras",
     section: "Fitur",
     name: "Fitur tambahan (nice to have)",
     label: "Ada fitur tambahan yang bagus kalau ada, tapi tidak wajib?",
-    hint: "Satu fitur per baris.",
-    type: "textarea",
+    type: "multi",
+    options: ["Favorit", "Berbagi tautan", "Lampiran berkas", "Template siap pakai"],
     optional: true,
   },
   {
@@ -68,10 +65,8 @@ const questions = [
     section: "Fitur",
     name: "Kemampuan tambahan",
     label: "Kemampuan lain apa yang kamu butuhkan?",
-    hint: "Boleh pilih lebih dari satu.",
     type: "multi",
     options: ["Grafik / statistik", "Notifikasi / pengingat", "Ekspor data (CSV / PDF)", "Impor data", "Mode offline", "Mode gelap"],
-    other: true,
     optional: true,
   },
   {
@@ -79,8 +74,8 @@ const questions = [
     section: "Data",
     name: "Data yang disimpan",
     label: "Data apa saja yang perlu disimpan?",
-    hint: "Sebutkan isian atau kolomnya. Contoh: tanggal, tekanan darah, gula darah, berat badan, catatan.",
-    type: "textarea",
+    type: "multi",
+    options: ["Nama dan deskripsi", "Tanggal dan waktu", "Status dan kategori", "Angka atau nominal", "Foto atau dokumen"],
   },
   {
     id: "storage",
@@ -89,15 +84,14 @@ const questions = [
     label: "Data mau disimpan di mana?",
     type: "choice",
     options: ["Firebase (Firestore)", "Supabase", "Browser saja (localStorage)", "Database SQL (MySQL / PostgreSQL)", "Belum tahu, sarankan saja"],
-    other: true,
   },
   {
     id: "security",
     section: "Data",
     name: "Privasi dan keamanan",
     label: "Ada hal soal privasi atau keamanan data yang perlu diperhatikan?",
-    hint: "Contoh: data kesehatan bersifat pribadi, hanya saya yang boleh melihat.",
-    type: "textarea",
+    type: "multi",
+    options: ["Data bersifat pribadi", "Akses sesuai peran", "Cadangan berkala", "Penghapusan data"],
     optional: true,
   },
   {
@@ -105,7 +99,6 @@ const questions = [
     section: "Tampilan",
     name: "Perangkat",
     label: "Aplikasi ini akan dibuka di perangkat apa?",
-    hint: "Boleh pilih lebih dari satu.",
     type: "multi",
     options: ["HP", "Tablet", "Laptop / desktop"],
   },
@@ -116,15 +109,14 @@ const questions = [
     label: "Seperti apa gaya tampilan yang kamu suka?",
     type: "choice",
     options: ["Minimalis dan bersih", "Berwarna dan ceria", "Profesional / formal", "Modern dengan animasi halus"],
-    other: true,
   },
   {
     id: "colors",
     section: "Tampilan",
     name: "Warna / referensi",
     label: "Ada warna favorit atau contoh aplikasi yang ingin ditiru tampilannya?",
-    hint: "Contoh: dominan biru, mirip Notion.",
-    type: "text",
+    type: "choice",
+    options: ["Netral monokrom", "Biru dan putih", "Warna pastel", "Warna alami"],
     optional: true,
   },
   {
@@ -142,7 +134,6 @@ const questions = [
     label: "Apakah ada preferensi teknologi?",
     type: "choice",
     options: ["HTML, CSS, dan JavaScript biasa", "React", "Vue", "Next.js", "Serahkan ke AI, pilihkan yang paling cocok"],
-    other: true,
   },
   {
     id: "hosting",
@@ -151,7 +142,6 @@ const questions = [
     label: "Aplikasi nanti mau di-hosting di mana?",
     type: "choice",
     options: ["Firebase Hosting", "Vercel", "Netlify", "GitHub Pages", "Belum tahu, sarankan saja"],
-    other: true,
   },
   {
     id: "experience",
@@ -167,8 +157,8 @@ const questions = [
     section: "Batasan",
     name: "Batasan",
     label: "Ada batasan waktu, biaya, atau hal lain yang perlu diketahui?",
-    hint: "Contoh: harus gratis, selesai dalam seminggu.",
-    type: "text",
+    type: "multi",
+    options: ["Gunakan layanan gratis", "Selesai dalam seminggu", "Mudah dirawat sendiri", "Hemat kuota"],
     optional: true,
   },
   {
@@ -176,7 +166,8 @@ const questions = [
     section: "Batasan",
     name: "Catatan tambahan",
     label: "Ada hal lain yang ingin kamu sampaikan?",
-    type: "textarea",
+    type: "multi",
+    options: ["Utamakan kemudahan penggunaan", "Mulai dari fitur inti", "Sertakan panduan penggunaan"],
     optional: true,
   },
   {
@@ -229,7 +220,7 @@ const loadState = () => {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
     if (saved && saved.answers && Number.isInteger(saved.index)) {
       state = {
-        answers: saved.answers,
+        answers: Object.fromEntries(questions.filter(q => saved.answers[q.id]).map(q => [q.id, normalizeAnswer(q, saved.answers[q.id])])),
         index: Math.min(Math.max(saved.index, 0), questions.length - 1),
         done: Boolean(saved.done),
       };
@@ -242,155 +233,101 @@ const loadState = () => {
 const saveState = () => {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    document.querySelector("#save-state").textContent = "Draf tersimpan";
   } catch (error) {
-    // Abaikan, aplikasi tetap berjalan tanpa penyimpanan.
+    document.querySelector("#save-state").textContent = "Draf sesi ini";
   }
 };
 
-const isTextType = (question) => question.type === "text" || question.type === "textarea";
+const note = document.querySelector("#note");
+const sections = [...new Set(questions.map(question => question.section))];
 
-const formatValue = (question, answer) => {
-  if (!answer) {
-    return "";
+// Older drafts stored free text in value and custom choices in other.
+const normalizeAnswer = (question, saved) => {
+  const selected = [];
+  const details = [];
+  for (const value of [].concat(saved.value || [])) {
+    if (question.options.includes(value)) selected.push(value);
+    else if (value === OTHER && saved.other) details.push(saved.other);
+    else if (typeof value === "string" && value !== OTHER) details.push(value);
   }
-  if (isTextType(question)) {
-    return answer.value.trim();
-  }
-  const other = (answer.other || "").trim();
-  return [].concat(answer.value)
-    .map((value) => (value === OTHER ? other : value))
-    .filter(Boolean)
-    .join(", ");
+  if (saved.note) details.push(saved.note);
+  return { value: selected, note: details.join("\n") };
 };
 
-const formatAnswer = (question) => formatValue(question, state.answers[question.id]);
+const formatValue = (answer) => answer
+  ? [...answer.value, answer.note.trim()].filter(Boolean).join("\n")
+  : "";
 
-const createOption = (question, label, checked) => {
-  const wrapper = document.createElement("label");
-  wrapper.className = "option";
-
-  const input = document.createElement("input");
-  input.type = question.type === "multi" ? "checkbox" : "radio";
-  input.name = "answer";
-  input.value = label;
-  input.checked = checked;
-
-  const text = document.createElement("span");
-  text.textContent = label;
-
-  wrapper.append(input, text);
-  return wrapper;
-};
-
-const syncOtherInput = () => {
-  const otherInput = answerArea.querySelector("#other-input");
-  if (!otherInput) {
-    return;
-  }
-  const otherChoice = [...answerArea.querySelectorAll("input[name='answer']")]
-    .find((input) => input.value === OTHER);
-  otherInput.hidden = !otherChoice.checked;
-};
+const ideaIcons = [
+  '<rect x="5" y="4" width="14" height="16" rx="2"/><path d="M9 9h6m-6 4h6"/>',
+  '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l1.5 1.5L11 8m2 2h4m-10 5h10"/>',
+  '<path d="M3 8l9-5 9 5v9l-9 5-9-5zm0 0l9 5 9-5m-9 5v9"/>',
+  '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 16v-4m5 4V8m5 8v-6"/>',
+];
 
 const renderAnswerArea = (question, saved) => {
   answerArea.replaceChildren();
-
-  if (isTextType(question)) {
-    const field = document.createElement(question.type === "textarea" ? "textarea" : "input");
-    field.id = "text-field";
-    if (question.type === "textarea") {
-      field.rows = 5;
-    } else {
-      field.type = "text";
+  question.options.forEach((label, index) => {
+    const wrapper = document.createElement("label");
+    wrapper.className = "option";
+    const input = document.createElement("input");
+    input.type = question.type === "multi" ? "checkbox" : "radio";
+    input.name = "answer";
+    input.value = label;
+    input.checked = saved?.value.includes(label) || false;
+    if (question.id === "idea") {
+      const icon = document.createElement("span");
+      icon.className = "option-icon";
+      icon.setAttribute("aria-hidden", "true");
+      icon.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${ideaIcons[index]}</svg>`;
+      wrapper.append(icon);
     }
-    field.value = saved ? saved.value : "";
-    answerArea.removeAttribute("role");
-    questionLabel.htmlFor = "text-field";
-    answerArea.append(field);
-    return;
-  }
-
-  const selected = saved ? [].concat(saved.value) : [];
-  const options = question.other ? [...question.options, OTHER] : question.options;
-
-  questionLabel.removeAttribute("for");
-  answerArea.setAttribute("role", "group");
-  answerArea.setAttribute("aria-labelledby", "question-label");
-  options.forEach((label) => {
-    answerArea.append(createOption(question, label, selected.includes(label)));
+    wrapper.append(input, document.createTextNode(label));
+    answerArea.append(wrapper);
   });
-
-  if (question.other) {
-    const otherInput = document.createElement("input");
-    otherInput.type = "text";
-    otherInput.id = "other-input";
-    otherInput.placeholder = "Tulis pilihanmu sendiri";
-    otherInput.value = saved ? saved.other || "" : "";
-    answerArea.append(otherInput);
-    syncOtherInput();
-  }
+  note.value = saved?.note || "";
 };
 
-const focusAnswer = () => {
-  const target = answerArea.querySelector("#text-field")
-    || answerArea.querySelector("input[name='answer']:checked")
-    || answerArea.querySelector("input[name='answer']");
-  if (target) {
-    target.focus();
-  }
+const renderProgress = () => {
+  const percent = Math.round((state.done ? 1 : state.index / questions.length) * 100);
+  progressBar.style.width = `${percent}%`;
+  document.querySelector("#percent").textContent = `${percent}%`;
+  document.querySelector("#sections").replaceChildren(...sections.map((section, i) => {
+    const row = document.createElement("li");
+    const number = document.createElement("span");
+    number.textContent = String(i + 1).padStart(2, "0");
+    row.append(number, section);
+    if (!state.done && section === questions[state.index].section) row.setAttribute("aria-current", "step");
+    return row;
+  }));
 };
 
 const renderQuestion = () => {
   const question = questions[state.index];
-
-  progressBar.style.width = `${(state.index / questions.length) * 100}%`;
-  progressText.textContent = `Pertanyaan ${state.index + 1} dari ${questions.length}`;
+  progressText.textContent = `Pertanyaan ${state.index + 1}/${questions.length}`;
   sectionName.textContent = question.section;
   questionLabel.textContent = question.label;
-  questionHint.textContent = question.hint || "";
-  questionHint.hidden = !question.hint;
+  const instruction = question.type === "multi" ? "Pilih satu atau beberapa jawaban" : "Pilih satu jawaban";
+  questionHint.textContent = instruction + ", atau tulis jawabanmu sendiri.";
   errorMessage.textContent = "";
-
   backButton.hidden = state.index === 0;
   skipButton.hidden = !question.optional;
-  submitButton.textContent = state.index === questions.length - 1 ? "Selesai" : "Lanjut";
-
+  submitButton.textContent = state.index === questions.length - 1 ? "Lihat ringkasan" : "Lanjut";
   renderAnswerArea(question, state.answers[question.id]);
-  focusAnswer();
 };
 
-const readAnswer = (question) => {
-  if (isTextType(question)) {
-    return { value: answerArea.querySelector("#text-field").value };
-  }
-
-  const checked = [...answerArea.querySelectorAll("input[name='answer']:checked")]
-    .map((input) => input.value);
-  const otherInput = answerArea.querySelector("#other-input");
-
-  return {
-    value: question.type === "multi" ? checked : checked[0] || "",
-    other: otherInput ? otherInput.value : "",
-  };
-};
-
-const validate = (question, answer) => {
-  const picksOther = [].concat(answer.value).includes(OTHER);
-  if (picksOther && !(answer.other || "").trim()) {
-    return `Isi dulu pilihan "${OTHER}", atau pilih opsi lain.`;
-  }
-  if (!question.optional && !formatValue(question, answer)) {
-    return "Pertanyaan ini perlu dijawab dulu.";
-  }
-  return "";
-};
+const readAnswer = () => ({
+  value: [...answerArea.querySelectorAll("input:checked")].map(input => input.value),
+  note: note.value,
+});
 
 const buildPrompt = () => {
   const lines = ["Halo, saya ingin meminta bantuan untuk membuat sebuah proyek. Berikut kebutuhan dan preferensi saya:"];
   let currentSection = "";
 
   questions.forEach((question) => {
-    const value = formatAnswer(question);
+    const value = formatValue(state.answers[question.id]);
     if (!value || question.asInstruction) {
       return;
     }
@@ -413,7 +350,8 @@ const buildPrompt = () => {
   });
 
   const workflow = questions.find((question) => question.asInstruction);
-  const instruction = workflowInstructions[formatAnswer(workflow)];
+  const answer = state.answers[workflow.id];
+  const instruction = [workflowInstructions[answer?.value[0]], answer?.note.trim()].filter(Boolean).join("\n");
   if (instruction) {
     lines.push("", "## Yang saya minta", instruction);
   }
@@ -421,7 +359,8 @@ const buildPrompt = () => {
   return lines.join("\n");
 };
 
-const render = () => {
+const render = (moveFocus = true) => {
+  renderProgress();
   quiz.hidden = state.done;
   result.hidden = !state.done;
   copyMessage.textContent = "";
@@ -432,6 +371,7 @@ const render = () => {
   } else {
     renderQuestion();
   }
+  if (moveFocus) (state.done ? document.querySelector("#result-title") : questionLabel).focus();
 };
 
 const goToNext = () => {
@@ -449,9 +389,13 @@ const resetRestartButton = () => {
   restartButton.textContent = "Mulai ulang";
 };
 
-answerArea.addEventListener("change", syncOtherInput);
+form.addEventListener("input", () => {
+  state.answers[questions[state.index].id] = readAnswer();
+  errorMessage.textContent = "";
+  saveState();
+});
 
-answerArea.addEventListener("keydown", (event) => {
+form.addEventListener("keydown", (event) => {
   if (event.key === "Enter" && event.ctrlKey && event.target.tagName === "TEXTAREA") {
     form.requestSubmit();
   }
@@ -461,15 +405,15 @@ form.addEventListener("submit", (event) => {
   event.preventDefault();
 
   const question = questions[state.index];
-  const answer = readAnswer(question);
-  const error = validate(question, answer);
+  const answer = readAnswer();
 
-  if (error) {
-    errorMessage.textContent = error;
+  if (!question.optional && !formatValue(answer)) {
+    errorMessage.textContent = "Pilih jawaban atau isi informasi tambahan untuk melanjutkan.";
+    answerArea.querySelector("input").focus();
     return;
   }
 
-  if (formatValue(question, answer)) {
+  if (formatValue(answer)) {
     state.answers[question.id] = answer;
   } else {
     delete state.answers[question.id];
@@ -517,4 +461,4 @@ copyButton.addEventListener("click", async () => {
 });
 
 loadState();
-render();
+render(false);
