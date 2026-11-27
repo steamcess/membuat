@@ -99,18 +99,48 @@ svg { display: block; flex-shrink: 0; }
 }
 .sessions-status:empty { display: none; }
 
-.session-list {
+.sessions-scroll {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  padding: 12px 12px max(18px, env(safe-area-inset-bottom));
+  scrollbar-width: thin;
+  scrollbar-color: #d0d9c6 transparent;
+}
+.session-list {
   list-style: none;
   margin: 0;
-  padding: 12px 12px max(18px, env(safe-area-inset-bottom));
+  padding: 0;
   display: flex;
   flex-direction: column;
   gap: 6px;
-  scrollbar-width: thin;
-  scrollbar-color: #d0d9c6 transparent;
+}
+.sessions-more-wrap {
+  flex-shrink: 0;
+  margin: 12px 12px 0;
+}
+.session-limit-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 550;
+}
+.session-limit-btn svg {
+  width: 15px;
+  height: 15px;
+  color: var(--muted);
+  transition: transform .18s ease;
+}
+.session-limit-btn[aria-expanded="true"] svg {
+  transform: rotate(180deg);
 }
 .session-empty {
   padding: 16px 10px;
@@ -446,7 +476,8 @@ footer small { display: block; text-align: center; color: var(--muted); font-siz
 @media (hover: hover) {
   .secondary:not(:disabled):hover,
   .icon-btn:not(:disabled):hover,
-  .copy-btn:not(:disabled):hover { background: #eef2e9; border-color: #cad5c0; color: var(--ink); opacity: 1; }
+  .copy-btn:not(:disabled):hover,
+  .session-limit-btn:not(:disabled):hover { background: #eef2e9; border-color: #cad5c0; color: var(--ink); opacity: 1; }
   .copy-btn.copied:not(:disabled):hover { background: #eaf6df; border-color: #cce5bb; color: var(--green); }
   .view-btn:not(.active):hover { color: var(--ink); opacity: 1; }
   .session-item:not(:disabled):hover { background: #eaf0e2; }
@@ -492,5 +523,5 @@ footer small { display: block; text-align: center; color: var(--muted); font-siz
 }
 @media (prefers-reduced-motion: reduce) {
   #messages { scroll-behavior: auto; }
-  button, form, .sessions-panel { transition: none; }
+  button, form, .sessions-panel, .session-limit-btn svg { transition: none; }
 }

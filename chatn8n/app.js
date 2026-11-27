@@ -5,7 +5,12 @@ const backdrop = document.querySelector('#drawer-backdrop');
 const toggleSessions = document.querySelector('#toggle-sessions');
 const closeSessions = document.querySelector('#close-sessions');
 const refreshSessions = document.querySelector('#refresh-sessions');
+const sessionsScroll = document.querySelector('#sessions-scroll');
+const sessionsSubtitle = document.querySelector('#sessions-subtitle');
 const sessionList = document.querySelector('#session-list');
+const sessionsMoreWrap = document.querySelector('#sessions-more-wrap');
+const toggleSessionLimit = document.querySelector('#toggle-session-limit');
+const sessionLimitLabel = document.querySelector('#session-limit-label');
 const sessionsStatus = document.querySelector('#sessions-status');
 const sessionCount = document.querySelector('#session-count');
 const messages = document.querySelector('#messages');
@@ -18,9 +23,12 @@ const status = document.querySelector('#status');
 const error = document.querySelector('#error');
 const sessionPattern = /^[a-f0-9]{32}$/;
 const desktopQuery = matchMedia('(min-width: 900px)');
+const SESSION_LIMIT_COLLAPSED = 9;
+const SESSION_LIMIT_EXPANDED = 20;
 
 let busy = false;
 let sessions = [];
+let sessionsExpanded = false;
 
 function createSession() {
   // getRandomValues also works on the HTTP address used inside Tailscale.
@@ -594,11 +602,31 @@ function createSessionButton({ id, title, meta, active }) {
 
 function renderSessionList() {
   sessionList.replaceChildren();
-  if (sessions.length > 0) {
-    sessionCount.textContent = String(sessions.length);
+  const cappedSessions = sessions.slice(0, SESSION_LIMIT_EXPANDED);
+  const canToggleLimit = cappedSessions.length > SESSION_LIMIT_COLLAPSED;
+  if (!canToggleLimit) sessionsExpanded = false;
+
+  const visibleLimit = sessionsExpanded ? SESSION_LIMIT_EXPANDED : SESSION_LIMIT_COLLAPSED;
+  const visibleSessions = cappedSessions.slice(0, visibleLimit);
+
+  if (cappedSessions.length > 0) {
+    sessionCount.textContent = String(cappedSessions.length);
     sessionCount.hidden = false;
   } else {
     sessionCount.hidden = true;
+  }
+
+  sessionsSubtitle.textContent = canToggleLimit
+    ? `Menampilkan ${visibleSessions.length} dari ${cappedSessions.length} sesi`
+    : 'Pilih sesi untuk melanjutkan';
+
+  sessionsMoreWrap.hidden = !canToggleLimit;
+  toggleSessionLimit.setAttribute('aria-expanded', String(sessionsExpanded));
+  if (canToggleLimit) {
+    const hiddenCount = cappedSessions.length - visibleSessions.length;
+    sessionLimitLabel.textContent = sessionsExpanded
+      ? `Ciutkan ke ${SESSION_LIMIT_COLLAPSED} sesi`
+      : `Tampilkan ${hiddenCount} sesi lainnya (maks. ${SESSION_LIMIT_EXPANDED})`;
   }
 
   const currentInList = sessions.some((item) => item.id === session.id);
@@ -612,7 +640,7 @@ function renderSessionList() {
     }));
   }
 
-  if (!sessions.length && !currentInList) {
+  if (!cappedSessions.length && !currentInList) {
     const empty = document.createElement('li');
     empty.className = 'session-empty';
     empty.textContent = 'Belum ada sesi tersimpan.';
@@ -620,7 +648,7 @@ function renderSessionList() {
     return;
   }
 
-  for (const item of sessions) {
+  for (const item of visibleSessions) {
     sessionList.append(createSessionButton({
       id: item.id,
       title: item.title || 'Percakapan',
@@ -726,6 +754,16 @@ toggleSessions.addEventListener('click', () => {
 closeSessions.addEventListener('click', closeDrawer);
 backdrop.addEventListener('click', closeDrawer);
 refreshSessions.addEventListener('click', () => { if (!busy) loadSessions(); });
+toggleSessionLimit.addEventListener('click', () => {
+  const previousCount = sessionList.childElementCount;
+  sessionsExpanded = !sessionsExpanded;
+  renderSessionList();
+  if (sessionsExpanded) {
+    sessionList.children[previousCount]?.scrollIntoView({ block: 'nearest' });
+  } else {
+    sessionsScroll.scrollTop = 0;
+  }
+});
 
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape' && !desktopQuery.matches && drawer.classList.contains('open')) {
