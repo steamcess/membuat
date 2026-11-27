@@ -1,31 +1,77 @@
 # Chat n8n
 
-Web chat pribadi, ringan, tanpa framework, CDN, atau dependensi npm. Tampilan mobile-first dengan tema terang. Memerlukan Node.js 22.9+ dan n8n yang berjalan.
+Web chat pribadi, ringan dan tanpa dependensi (tanpa framework, CDN, atau paket npm), untuk mengobrol dengan chatbot AI yang berjalan di n8n — Google Gemini sebagai model dan PostgreSQL sebagai memori percakapan. Dibuka dari HP atau iPad melalui jaringan Tailscale. Tampilan mobile-first, tema terang, satu file HTML + CSS + JS.
+
+## Arsitektur
+
+```
+Browser (HP/iPad, harus masuk Tailscale)
+  │  http://100.110.217.94:3000
+  ▼
+server.mjs — Node.js tanpa dependensi
+  │  POST /api/chat + Basic Auth (password hanya di server)
+  ▼
+Webhook n8n → workflow "Chatbot Internal - Gemini & Postgres"
+  │
+  ├─ AI Agent (otak chatbot, instruksi dalam Bahasa Indonesia)
+  ├─ Google Gemini Chat Model (sub-node, yang menjawab)
+  └─ Postgres Chat Memory (sub-node, yang mengingat)
+       └─ tabel n8n_chat_histories di PostgreSQL
+```
+
+Browser tidak pernah bicara langsung ke n8n; semua lewat web server ini, dan credential tidak pernah dikirim ke browser.
+
+## Isi folder
+
+| File | Isi |
+| --- | --- |
+| `server.mjs` | Web server: menyajikan 3 file statis + satu endpoint `POST /api/chat` yang meneruskan pesan ke n8n |
+| `server.test.mjs` | Tes HTTP server dengan n8n tiruan (tanpa credential, tanpa AI) |
+| `index.html`, `style.css`, `app.js` | Tampilan chat: sesi lokal, tampilan pesan, tombol **Chat baru** |
+| `.env.example` | Contoh isi `.env`; salin menjadi `.env` lalu isi nilai aslinya |
+| `.env` | Konfigurasi asli + password. **Tidak di-commit** (sudah di-ignore) |
 
 ## Menjalankan
 
-1. Salin `.env.example` menjadi `.env`.
-2. Isi password Basic Auth yang sama dengan credential pada Chat Trigger di n8n. Jangan commit `.env` atau menaruh credential di file browser.
-3. Jalankan `npm start` dari folder ini.
-4. Buka **http://100.110.217.94:3000** dari perangkat yang terhubung ke Tailscale Anda.
+Prasyarat: Node.js ≥ 22.9, Docker n8n + PostgreSQL sudah berjalan, dan perangkat yang dipakai mengobrol terhubung ke Tailscale.
 
-Server secara default hanya mendengarkan pada IP Tailscale tersebut, bukan seluruh antarmuka jaringan. Akses mengikuti izin jaringan Tailscale; aplikasi ini tidak memiliki login pengguna terpisah. Jangan mengekspos port ini ke internet publik. Laptop, Tailscale, n8n, PostgreSQL, dan proses web server harus tetap menyala. `npm start` berhenti jika proses terminalnya dihentikan.
+1. `cp .env.example .env`, lalu isi:
+   - `N8N_CHAT_URL` — URL webhook produksi Chat Trigger di n8n.
+   - `N8N_CHAT_USER` / `N8N_CHAT_PASSWORD` — sama dengan credential Basic Auth pada Chat Trigger n8n.
+   - `HOST` / `PORT` — default IP Tailscale dan port 3000.
+2. `npm start` dari folder ini.
+3. Buka `http://100.110.217.94:3000` dari perangkat ber-Tailscale.
 
-## Workflow n8n
+Setelah laptop direstart: n8n dan PostgreSQL menyala otomatis (container Docker `restart: unless-stopped`), tetapi web chat ini **tidak** — jalankan `npm start` lagi.
 
-- Workflow: **Chatbot Internal - Gemini & Postgres** (`EtZ8TjakWxnwNlCW`).
-- Chat Trigger: **Make Chat Publicly Available = true**, mode **Embedded Chat**, authentication **Basic Auth**, response mode **When Last Node Finishes**.
-- Credential Basic Auth khusus web chat hanya disimpan di n8n dan `.env` server. Istilah "Publicly Available" adalah pengaturan webhook produksi n8n, bukan berarti chatbot ini tanpa autentikasi.
-- Chat Trigger → AI Agent → jawaban `{ "output": "..." }`. Gemini dan Postgres Chat Memory tetap menjadi sub-node AI Agent. Model, instruksi, dan sumber pengetahuan diubah di n8n, bukan di browser.
-- Publikasikan workflow setelah mengubahnya agar web chat memakai versi terbaru.
-- Browser memanggil `/api/chat` di web server yang sama. Server meneruskan hanya pesan dan ID sesi ke webhook n8n, dengan Basic Auth. Credential tidak pernah dikirim ke browser.
+## Cara kerja
 
-## Sesi dan memori
+- **Sesi**: browser membuat ID sesi acak 32-heksa, disimpan di localStorage (kunci `chatn8n.session.v1`) bersama maksimum 100 pesan tampilan, agar obrolan berlanjut saat halaman dibuka ulang. **Chat baru** membuat ID sesi baru.
+- **Permintaan**: browser memanggil `POST /api/chat` di server yang sama. Server memvalidasi origin, format sesi, dan ukuran (maksimum 32 KB / 8.000 karakter), lalu meneruskan hanya `{ action, chatInput, sessionId }` ke webhook n8n dengan Basic Auth. Timeout 90 detik; jika kedaluwarsa, jangan kirim ulang — n8n mungkin masih memproses.
+- **Memori**: node Postgres Chat Memory menyimpan setiap pasangan tanya-jawab ke tabel `n8n_chat_histories` dan mengirim jendela konteks terakhir (10) ke AI Agent. Sesi berbeda = memori berbeda, jadi sesi baru tidak tahu isi sesi lama. Browser/perangkat lain punya sesi sendiri; belum ada identitas pengguna atau sinkronisasi antarperangkat.
 
-ID sesi acak dan hingga 100 pesan terakhir disimpan di localStorage browser agar tampilan dan sesi berlanjut saat halaman dibuka ulang. Ini bukan batas penyimpanan PostgreSQL. Riwayat lengkap dikelola oleh node Postgres Chat Memory; jendela konteks mengikuti pengaturannya di n8n.
+## Keamanan
 
-**Chat baru** membuat ID sesi baru. Riwayat sesi lama tidak dihapus dari PostgreSQL dan tidak otomatis dipakai pada sesi baru. Browser/perangkat lain memiliki sesi sendiri; aplikasi ini belum memiliki identitas pengguna atau sinkronisasi antarperangkat. Menghapus data situs juga memulai sesi baru. Jangan gunakan pada browser bersama untuk percakapan rahasia.
+- Password Basic Auth hanya ada di `.env` server (chmod 600) dan credential n8n — tidak pernah sampai ke browser atau Git.
+- Server hanya mendengarkan IP Tailscale, bukan seluruh antarmuka jaringan; akses mengikuti izin Tailscale. Aplikasi ini tidak punya login pengguna terpisah.
+- Jangan mengekspos port 3000 ke internet publik, dan jangan memakai browser bersama untuk percakapan rahasia (sesi tersimpan di localStorage tanpa nama pengguna).
 
-## Pemeriksaan
+## Sisi n8n (workflow yang dihubungi)
 
-`npm test` menjalankan tes HTTP server dengan n8n tiruan, tanpa membutuhkan credential atau memanggil AI. Untuk tes nyata, sebutkan informasi unik, tanyakan lagi dalam sesi yang sama, lalu periksa tabel `n8n_chat_histories`. Jangan mengirim ulang otomatis setelah timeout: n8n mungkin masih memproses pesan pertama.
+- Workflow **Chatbot Internal - Gemini & Postgres** (ID `EtZ8TjakWxnwNlCW`): Chat Trigger (Basic Auth, allowed origins `http://100.110.217.94:3000`, respons setelah node terakhir) → AI Agent → sub-node Gemini Chat Model dan Postgres Chat Memory.
+- Balasan yang diharapkan web chat: JSON `{ "output": "..." }` dari akhir workflow.
+- Container n8n memakai `N8N_EDITOR_BASE_URL=http://100.110.217.94:5678` agar fitur *Open chat* di editor tidak gagal.
+- Setelah mengubah workflow di editor, publikasikan — web chat baru memakai versi terbaru. Model, instruksi, dan sumber pengetahuan diatur di n8n, bukan di sini.
+
+## Pemeriksaan & masalah umum
+
+`npm test` menjalankan 3 tes server (penerusan pesan, penolakan permintaan tak valid, dan laporan kegagalan n8n). Untuk tes nyata dengan memori: kirim informasi unik, tanyakan lagi di sesi yang sama, lalu periksa tabel `n8n_chat_histories` di PostgreSQL.
+
+| Gejala | Kemungkinan penyebab |
+| --- | --- |
+| "Tidak bisa mengambil balasan dari n8n" | n8n tidak berjalan, atau `N8N_CHAT_URL` salah |
+| "n8n gagal memproses pesan" (502) | Eksekusi workflow gagal — cek log eksekusi & credential di n8n |
+| Diminta password terus (401) | Password di `.env` berbeda dari credential Chat Trigger n8n |
+| "n8n tidak mengirim balasan" | Workflow belum dipublikasikan, atau tidak berakhir di AI Agent |
+| Halaman tidak terbuka dari HP | Perangkat belum terhubung Tailscale, atau `npm start` belum dijalankan |
+| *Open chat* di editor n8n gagal | Cek `N8N_EDITOR_BASE_URL` di compose n8n |
