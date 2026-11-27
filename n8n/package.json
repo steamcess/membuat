@@ -1,0 +1,11 @@
+{
+  "name": "local-n8n-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "n8n-mcp": "2.104.0"
+  },
+  "overrides": {
+    "@modelcontextprotocol/sdk": "1.32.2"
+  }
+}
