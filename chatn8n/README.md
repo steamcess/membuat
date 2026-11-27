@@ -25,9 +25,10 @@ Browser tidak pernah bicara langsung ke n8n; semua lewat web server ini, dan cre
 
 | File | Isi |
 | --- | --- |
-| `server.mjs` | Web server: menyajikan 3 file statis + satu endpoint `POST /api/chat` yang meneruskan pesan ke n8n |
-| `server.test.mjs` | Tes HTTP server dengan n8n tiruan (tanpa credential, tanpa AI) |
-| `index.html`, `style.css`, `app.js` | Tampilan chat: sesi lokal, tampilan pesan, tombol **Chat baru** |
+| `server.mjs` | Web server: menyajikan 3 file statis, endpoint `GET /api/sessions` & `GET /api/sessions/:id`, serta `POST /api/chat` ke n8n |
+| `pg-client.mjs` | Klien PostgreSQL TCP wire-protocol murni Node.js (tanpa dependensi) untuk membaca tabel `n8n_chat_histories` |
+| `server.test.mjs` | Tes HTTP server dan klien PostgreSQL tiruan (tanpa credential, tanpa AI) |
+| `index.html`, `style.css`, `app.js` | Tampilan chat & panel daftar sesi: pilih sesi sebelumnya, sesi lokal, tombol **Chat baru** |
 | `.env.example` | Contoh isi `.env`; salin menjadi `.env` lalu isi nilai aslinya |
 | `.env` | Konfigurasi asli + password. **Tidak di-commit** (sudah di-ignore) |
 
@@ -38,11 +39,14 @@ Prasyarat: Node.js ≥ 22.9, Docker n8n + PostgreSQL sudah berjalan, dan perangk
 1. `cp .env.example .env`, lalu isi:
    - `N8N_CHAT_URL` — URL webhook produksi Chat Trigger di n8n.
    - `N8N_CHAT_USER` / `N8N_CHAT_PASSWORD` — sama dengan credential Basic Auth pada Chat Trigger n8n.
+   - `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD` — koneksi PostgreSQL untuk memuat daftar dan riwayat sesi dari tabel `n8n_chat_histories`.
    - `HOST` / `PORT` — default IP Tailscale dan port 3000.
-2. `npm start` dari folder ini.
+2. Jalankan web chat — dua cara:
+   - **Otomatis (yang dipakai sekarang):** systemd user service `chatn8n` (`~/.config/systemd/user/chatn8n.service`) sudah aktif dan menyala sendiri setiap laptop direstart, tanpa perlu login (linger aktif). Kendalikan dengan `systemctl --user status|restart|stop chatn8n`.
+   - **Manual:** `npm start` dari folder ini — matikan dulu service-nya (`systemctl --user stop chatn8n`) agar tidak berebut port 3000.
 3. Buka `http://100.110.217.94:3000` dari perangkat ber-Tailscale.
 
-Setelah laptop direstart: n8n dan PostgreSQL menyala otomatis (container Docker `restart: unless-stopped`), tetapi web chat ini **tidak** — jalankan `npm start` lagi.
+Setelah laptop direstart, semuanya menyala sendiri: n8n dan PostgreSQL otomatis karena container Docker `restart: unless-stopped`, dan web chat otomatis karena user service di atas.
 
 ## Cara kerja
 
@@ -73,5 +77,5 @@ Setelah laptop direstart: n8n dan PostgreSQL menyala otomatis (container Docker 
 | "n8n gagal memproses pesan" (502) | Eksekusi workflow gagal — cek log eksekusi & credential di n8n |
 | Diminta password terus (401) | Password di `.env` berbeda dari credential Chat Trigger n8n |
 | "n8n tidak mengirim balasan" | Workflow belum dipublikasikan, atau tidak berakhir di AI Agent |
-| Halaman tidak terbuka dari HP | Perangkat belum terhubung Tailscale, atau `npm start` belum dijalankan |
+| Halaman tidak terbuka dari HP | Perangkat belum terhubung Tailscale, atau service tidak berjalan — cek `systemctl --user status chatn8n` |
 | *Open chat* di editor n8n gagal | Cek `N8N_EDITOR_BASE_URL` di compose n8n |

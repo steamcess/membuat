@@ -5,51 +5,84 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="light">
   <meta name="theme-color" content="#fbfcf9">
-  <link rel="icon" href="data:,">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="stylesheet" href="/style.css">
   <script src="/app.js" defer></script>
   <title>Chat n8n</title>
 </head>
 <body>
-  <main class="chat">
-    <header>
-      <div class="brand">
-        <span class="brand-mark" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none"><path d="m5 6 6 6-6 6M14 18h5" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"/></svg>
-        </span>
-        <div><h1>Chat <span>n8n</span></h1><p>Asisten pribadi</p></div>
-      </div>
-      <button id="new-chat" class="secondary" type="button">
-        <svg aria-hidden="true" viewBox="0 0 20 20" fill="none"><path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-        Chat baru
-      </button>
-    </header>
-
-    <section id="messages" role="log" aria-label="Percakapan" aria-live="polite" aria-relevant="additions text">
-      <div id="welcome" class="welcome">
-        <div class="welcome-mark" aria-hidden="true">
-          <svg viewBox="0 0 32 32" fill="none"><path d="m8 9 7 7-7 7M19 23h7" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter"/></svg>
+  <div id="app-shell" class="app-shell">
+    <aside id="sessions-drawer" class="sessions-panel" aria-label="Daftar sesi percakapan">
+      <div class="sessions-head">
+        <div>
+          <h2>Riwayat Sesi</h2>
+          <p>Pilih sesi untuk melanjutkan</p>
         </div>
-        <span class="eyebrow">Ruang untuk ide Anda</span>
-        <h2>Ada yang ingin <span>ditanyakan?</span></h2>
-        <p>Kirim pesan untuk mulai ngobrol dengan AI di n8n.</p>
+        <div class="sessions-head-actions">
+          <button id="refresh-sessions" class="icon-btn" type="button" title="Muat ulang daftar sesi" aria-label="Muat ulang daftar sesi">
+            <svg aria-hidden="true" viewBox="0 0 20 20" fill="none"><path d="M16.5 10a6.5 6.5 0 1 1-1.7-4.4M16.5 3.5v3.2h-3.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <button id="close-sessions" class="icon-btn mobile-only" type="button" title="Tutup daftar sesi" aria-label="Tutup daftar sesi">
+            <svg aria-hidden="true" viewBox="0 0 20 20" fill="none"><path d="m5 5 10 10M15 5 5 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          </button>
+        </div>
       </div>
-    </section>
+      <p id="sessions-status" class="sessions-status" role="status" aria-live="polite"></p>
+      <ul id="session-list" class="session-list"></ul>
+    </aside>
 
-    <footer>
-      <p id="status" role="status" aria-live="polite"></p>
-      <p id="error" role="alert" hidden></p>
-      <form id="chat-form">
-        <label class="sr-only" for="message">Pesan</label>
-        <svg class="prompt-mark" aria-hidden="true" viewBox="0 0 20 20" fill="none"><path d="m6 5 5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"/></svg>
-        <textarea id="message" name="message" rows="1" maxlength="8000" placeholder="Tulis pesan…" required></textarea>
-        <button id="send" type="submit" title="Kirim">
-          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none"><path d="M12 19V5m-6 6 6-6 6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          <span class="sr-only">Kirim</span>
-        </button>
-      </form>
-      <small>Memori mengikuti sesi ini. Jawaban AI bisa keliru.</small>
-    </footer>
-  </main>
+    <div id="drawer-backdrop" class="drawer-backdrop" hidden></div>
+
+    <main class="chat">
+      <header>
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none"><path d="m5 6 6 6-6 6M14 18h5" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"/></svg>
+          </span>
+          <div><h1>Chat <span>n8n</span></h1><p>Asisten pribadi</p></div>
+        </div>
+        <div class="header-actions">
+          <button id="toggle-sessions" class="secondary" type="button" aria-expanded="false" aria-controls="sessions-drawer">
+            <svg aria-hidden="true" viewBox="0 0 20 20" fill="none"><path d="M3.5 5.5h13M3.5 10h13M3.5 14.5h9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            <span>Sesi</span>
+            <span id="session-count" class="count-pill" hidden></span>
+          </button>
+          <button id="new-chat" class="secondary" type="button">
+            <svg aria-hidden="true" viewBox="0 0 20 20" fill="none"><path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            Chat baru
+          </button>
+        </div>
+      </header>
+
+      <section id="messages" role="log" aria-label="Percakapan" aria-live="polite" aria-relevant="additions text"></section>
+
+      <template id="welcome-template">
+        <div id="welcome" class="welcome">
+          <div class="welcome-mark" aria-hidden="true">
+            <svg viewBox="0 0 32 32" fill="none"><path d="m8 9 7 7-7 7M19 23h7" stroke="currentColor" stroke-width="2.5" stroke-linecap="square" stroke-linejoin="miter"/></svg>
+          </div>
+          <span class="eyebrow">Ruang untuk ide Anda</span>
+          <h2>Ada yang ingin <span>ditanyakan?</span></h2>
+          <p>Kirim pesan untuk mulai ngobrol dengan AI di n8n, atau pilih sesi sebelumnya.</p>
+          <button id="welcome-sessions" class="secondary welcome-sessions" type="button" hidden>Lihat sesi sebelumnya</button>
+        </div>
+      </template>
+
+      <footer>
+        <p id="status" role="status" aria-live="polite"></p>
+        <p id="error" role="alert" hidden></p>
+        <form id="chat-form">
+          <label class="sr-only" for="message">Pesan</label>
+          <svg class="prompt-mark" aria-hidden="true" viewBox="0 0 20 20" fill="none"><path d="m6 5 5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"/></svg>
+          <textarea id="message" name="message" rows="1" maxlength="8000" placeholder="Tulis pesan…" required></textarea>
+          <button id="send" type="submit" title="Kirim">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none"><path d="M12 19V5m-6 6 6-6 6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="sr-only">Kirim</span>
+          </button>
+        </form>
+        <small>Memori mengikuti sesi yang dipilih. Jawaban AI bisa keliru.</small>
+      </footer>
+    </main>
+  </div>
 </body>
 </html>
