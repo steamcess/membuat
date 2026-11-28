@@ -22,6 +22,7 @@ Webhook n8n → workflow "Chatbot Internal - Gemini & Postgres"
        ├─ Cari Katering Sekolah → knowledge.katering_sekolah
        ├─ Cari Layanan Infrastruktur → knowledge.layanan_infrastruktur
        ├─ Cari Pengetahuan → knowledge.pengetahuan
+       ├─ Google Drive & Google Docs (default: folder-popi-n8n)
        └─ Tavily Search & Tavily Extract → pencarian dan baca halaman web
 ```
 
@@ -87,7 +88,7 @@ Setelah laptop direstart, semuanya menyala sendiri: n8n dan PostgreSQL otomatis 
 
 ## Sisi n8n (workflow yang dihubungi)
 
-- Workflow **Chatbot Internal - Gemini & Postgres** (ID `EtZ8TjakWxnwNlCW`) menerima pesan lewat Chat Trigger dengan Basic Auth dan allowed origin `http://100.110.217.94:3000`. AI Agent memakai Google Gemini Chat Model, Postgres Chat Memory, empat tool PostgreSQL, dan dua HTTP Request Tool untuk Tavily. Chat Trigger mengirim respons setelah node terakhir.
+- Workflow **Chatbot Internal - Gemini & Postgres** (ID `EtZ8TjakWxnwNlCW`) menerima pesan lewat Chat Trigger dengan Basic Auth dan allowed origin `http://100.110.217.94:3000`. AI Agent memakai Google Gemini Chat Model, Postgres Chat Memory, empat tool PostgreSQL, dua HTTP Request Tool untuk Tavily, serta empat tool Google Drive. Chat Trigger mengirim respons setelah node terakhir.
 - **Tavily Search** (`POST https://api.tavily.com/search`) dan **Tavily Extract** (`POST https://api.tavily.com/extract`) memakai credential Bearer Auth Tavily (`httpBearerAuth`).
 - Tavily dipanggil lewat **HTTP Request Tool** dengan parameter `$fromAI(...)` (bukan `MCP Client Tool`) karena skema MCP bawaan Tavily memakai union `anyOf` / `const` yang ditolak oleh *function declarations* Google Gemini.
 - Balasan yang diharapkan web chat: JSON `{ "output": "..." }` dari akhir workflow.
@@ -105,6 +106,13 @@ Kirim email ke hardhy@gmail.com pesannya: sudah jadi chat berbasis web dan punya
 ```
 
 Node **Rute Perintah Email** memeriksa alamat dan isi pesan sebelum menjalankan **Kirim Email dari Chat**. Node tersebut memakai kredensial SMTP notifikasi yang sudah ada, dengan subjek **Pesan dari Chat n8n**. Chat menampilkan status pengiriman. Perintah email melewati jalur notifikasi otomatis, sedangkan pertanyaan biasa tetap masuk ke AI Agent.
+
+### Google Drive & Google Docs
+
+Workflow memakai kredensial OAuth2 **Google Drive account 2** (`googleDriveOAuth2Api`) dengan folder default **`folder-popi-n8n`** (`1jKEKnFURfG9qVJLKxQPQUZVKxocsmiHT`) untuk kirim dan terima, kecuali pengguna menyebut folder atau file spesifik di chat:
+
+- **Simpan otomatis hasil Gemini ke Google Docs (sedang dijeda):** Node **Simpan Jawaban ke Google Docs** (di belakang percabangan **Cek Sudah Ditulis ke Drive**) tetap dipertahankan di workflow dalam keadaan dinonaktifkan (`disabled`). Saat diaktifkan, setiap jawaban chat biasa otomatis dibuatkan file Google Docs baru di `folder-popi-n8n` lewat endpoint multipart Google Drive API (`uploadType=multipart`) dengan konversi `application/vnd.google-apps.document` dan menautkannya di akhir balasan chat. Untuk mengaktifkan kembali fitur uji coba ini, aktifkan node **Simpan Jawaban ke Google Docs** di editor n8n lalu publikasikan workflow.
+- **Tool AI Agent:** **Cari File Google Drive** dan **Baca Isi File Google Drive** membaca daftar serta isi Google Docs atau file teks (default di `folder-popi-n8n`), sedangkan **Simpan ke Google Docs Spesifik** dan **Update File Google Drive** dipakai jika pengguna secara eksplisit meminta menyimpan atau memperbarui ke folder maupun file tertentu di chat.
 
 ## Pengetahuan di PostgreSQL
 
