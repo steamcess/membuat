@@ -29,9 +29,10 @@ Browser tidak pernah bicara langsung ke n8n; semua lewat web server ini, dan cre
 
 | File | Isi |
 | --- | --- |
+| `AGENTS.md` | Panduan agen untuk mengerjakan dan memverifikasi perubahan proyek |
 | `server.mjs` | Web server untuk halaman chat dan data, API sesi dan data, serta `POST /api/chat` ke n8n |
 | `pg-client.mjs` | Klien PostgreSQL TCP wire-protocol murni Node.js (tanpa dependensi) dan pembaca tabel `n8n_chat_histories` |
-| `data.html`, `data.css`, `data.js`, `data-store.mjs` | Halaman `/data` untuk melihat dan mengubah data katering dan murid di PostgreSQL |
+| `data.html`, `data.css`, `data.js`, `data-store.mjs` | Halaman `/data` dan akses PostgreSQL untuk melihat, menambah, dan mengubah data katering, murid, layanan, dan pengetahuan |
 | `server.test.mjs` | Tes HTTP server dan klien PostgreSQL tiruan (tanpa credential, tanpa AI) |
 | `index.html`, `style.css`, `app.js` | Tampilan chat & panel daftar sesi: pilih sesi sebelumnya, tombol **Chat baru**, tombol **salin** per pesan, dan sakelar tampilan **Markdown** / **Preview** |
 | `favicon.svg` | Ikon tab browser bertema hijau terang (`>_`) |
@@ -56,12 +57,21 @@ Setelah laptop direstart, semuanya menyala sendiri: n8n dan PostgreSQL otomatis 
 
 ## Cara kerja
 
-- **Sesi**: browser membuat ID sesi acak 32-heksa, disimpan di localStorage (kunci `chatn8n.session.v1`) bersama maksimum 100 pesan tampilan, agar obrolan berlanjut saat halaman dibuka ulang. **Chat baru** membuat ID sesi baru.
-- **Tampilan smartphone**: logo hijau di kiri atas membuka sidebar berisi **Chat baru**, daftar **Sesi** yang dapat dibuka-tutup, dan tautan **Data**. Logo tetap terlihat saat percakapan digulir; teks pesan menggunakan ukuran 12 px.
-- **Tampilan pesan & salin**: di tengah atas setiap pesan (kiriman pengguna maupun jawaban AI) tersedia dua tombol kecil untuk berpindah antara **Markdown** (teks mentah monospace) dan **Preview** (bawaan — merender heading, tebal/miring, daftar, kutipan, kode, tabel, dan tautan secara aman tanpa dependensi eksternal). Di bawah pesan terdapat tombol **copy** kecil (kanan bawah untuk pesan pengguna, kiri bawah untuk jawaban AI) yang menyalin isi sesuai mode tampilan aktif dan memiliki fallback `execCommand('copy')` agar tetap berjalan pada alamat HTTP Tailscale.
-- **Data**: buka **Data** di sidebar atau `http://100.110.217.94:3000/data`, lalu pilih **Katering** atau **Murid**. Ketuk kartu untuk membuka formulir, lalu tekan **Simpan** atau **Batal**. Data dibaca langsung dari dua tabel yang ditentukan, 50 baris per halaman; belum ada fungsi tambah atau hapus. Server menerima pembaruan hanya dari origin aplikasi, membandingkan nilai sebelumnya untuk mencegah perubahan lain tertimpa, serta tidak menerima nama tabel atau SQL bebas.
-- **Permintaan**: browser memanggil `POST /api/chat` di server yang sama. Server memvalidasi origin, format sesi, dan ukuran (maksimum 32 KB / 8.000 karakter), lalu meneruskan hanya `{ action, chatInput, sessionId }` ke webhook n8n dengan Basic Auth. Timeout 90 detik; jika kedaluwarsa, jangan kirim ulang — n8n mungkin masih memproses.
-- **Memori**: node Postgres Chat Memory menyimpan setiap pasangan tanya-jawab ke tabel `n8n_chat_histories` dan mengirim jendela konteks terakhir (10) ke AI Agent. Sesi berbeda = memori berbeda, jadi sesi baru tidak tahu isi sesi lama. Browser/perangkat lain punya sesi sendiri; belum ada identitas pengguna atau sinkronisasi antarperangkat.
+### Chat (`/`)
+
+- **Navigasi dan riwayat.** Di desktop, buka **Sesi** dari header. Di ponsel, ketuk logo hijau di kiri atas untuk membuka menu **Chat baru**, **Sesi**, dan **Data**. Daftar riwayat dapat dimuat ulang, menampilkan hingga 9 sesi tersimpan pada awalnya, dan dapat diperluas hingga 20. Memilih sesi memuat pesannya lewat `GET /api/sessions/:sessionId`.
+- **Sesi aktif.** Browser menyimpan ID sesi acak sepanjang 32 karakter heksadesimal dan hingga 100 pesan sesi aktif di `localStorage` (`chatn8n.session.v1`). Saat halaman dibuka kembali, aplikasi mencoba menyelaraskan pesan sesi aktif dengan riwayat dari PostgreSQL. **Chat baru** membuat ID baru jika sesi aktif sudah berisi pesan.
+- **Mengirim pesan.** Tekan **Kirim**. Pada perangkat dengan penunjuk presisi seperti mouse, **Enter** mengirim pesan dan **Shift+Enter** menambah baris. Selama menunggu respons, chat menampilkan **Sedang menulis…**. Jika gagal, teks dikembalikan ke kolom pesan. Jika waktu tunggu habis, periksa eksekusi n8n sebelum mengirim ulang karena pesan mungkin sudah diproses.
+- **Alur API.** Browser mengirim `{ message, sessionId }` ke `POST /api/chat`. Server memvalidasi origin, ID sesi, dan ukuran permintaan (32 KB, dengan batas pesan 8.000 karakter), lalu meneruskan `{ action, chatInput, sessionId }` ke webhook n8n dengan Basic Auth. Server menunggu n8n hingga 90 detik. Browser menampilkan teks dari field `output`.
+- **Tampilan pesan.** Setiap pesan dapat ditampilkan sebagai **Preview** (bawaan) atau **Markdown** mentah. Tombol salin mengikuti mode aktif dan memiliki fallback untuk akses melalui HTTP Tailscale.
+- **Memori n8n.** Postgres Chat Memory menyimpan percakapan di `n8n_chat_histories` dan memasok jendela konteks terakhir (10) ke AI Agent. Memori mengikuti ID sesi yang dipilih. Pilihan sesi aktif disimpan per browser.
+
+### Data tersimpan (`/data`)
+
+- **Memilih jenis data.** Buka **Data** dari menu chat. Halaman membuka **Katering** secara bawaan. Pilihan **Katering**, **Murid**, **Layanan**, dan **Pengetahuan** tercermin pada parameter `jenis` di URL, misalnya `/data?jenis=pengetahuan`. Gunakan **Kembali ke chat** untuk kembali ke percakapan.
+- **Menelusuri data.** Aplikasi memuat hingga 50 baris per halaman melalui `GET /api/data/:dataset?offset=…`. Data ditampilkan sebagai tabel di layar lebar dan kartu berlabel di ponsel. Gunakan **Sebelumnya** dan **Selanjutnya** untuk berpindah halaman, atau **Coba lagi** jika daftar gagal dimuat.
+- **Menambah dan mengubah.** Tekan tombol **Tambah** pada jenis data yang dipilih untuk membuka formulir kosong, atau pilih baris maupun kartu untuk mengubah entri. Formulir mengikuti kolom, aturan wajib isi, dan batas panjang yang diberikan API. **Simpan** mengirim `POST` untuk entri baru atau `PATCH` untuk perubahan. Setelah tersimpan, daftar dimuat ulang. Penambahan kembali ke halaman pertama.
+- **Konflik penyimpanan.** Server memvalidasi origin, jenis data, dan kolom yang diizinkan. Saat mengubah entri, server membandingkan nilai awal dengan data di PostgreSQL untuk mencegah pembaruan lain tertimpa. Jika data sudah berubah atau hasil penyimpanan belum pasti, gunakan **Muat ulang data** di formulir sebelum mencoba lagi.
 
 ## Keamanan
 
