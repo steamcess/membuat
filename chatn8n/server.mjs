@@ -67,7 +67,8 @@ export function createChatServer({ webhookUrl, authorization, sessionStore = nul
       if (!Object.hasOwn(DATA_SETS, name)) return json(404, { error: 'Jenis data tidak ditemukan.' });
       const { title, columns, rowKey, insertSql } = DATA_SETS[name];
       const inserting = request.method === 'POST' && Boolean(insertSql);
-      if (request.method === 'PATCH' || inserting) {
+      const deleting = request.method === 'DELETE';
+      if (request.method === 'PATCH' || inserting || deleting) {
         if (request.headers.origin !== `http://${request.headers.host}`) return json(403, { error: 'Asal permintaan tidak diizinkan.' });
         if (request.headers['content-type']?.split(';')[0].trim() !== 'application/json') return json(415, { error: 'Gunakan JSON.' });
         if (!dataStore) return json(503, { error: 'Database belum dikonfigurasi.' });
@@ -84,30 +85,33 @@ export function createChatServer({ webhookUrl, authorization, sessionStore = nul
           body = JSON.parse(Buffer.concat(chunks).toString('utf8'));
         } catch { return json(400, { error: 'Format data tidak valid.' }); }
 
-        const expectedKeys = inserting ? 1 : rowKey ? 3 : 2;
+        const expectedKeys = inserting ? 1 : (deleting ? 1 : 2) + (rowKey ? 1 : 0);
         if (!body || typeof body !== 'object' || Array.isArray(body) || Object.keys(body).length !== expectedKeys ||
-            !Object.hasOwn(body, 'values') || !validDataRow(body.values, columns, inserting) ||
+            (!deleting && (!Object.hasOwn(body, 'values') || !validDataRow(body.values, columns, inserting))) ||
             (!inserting && (!Object.hasOwn(body, 'original') || !validDataRow(body.original, columns))) ||
             (!inserting && rowKey && (!Object.hasOwn(body, 'id') || typeof body.id !== 'string' ||
               !/^[1-9]\d{0,18}$/.test(body.id) || BigInt(body.id) > 9223372036854775807n))) {
           return json(400, { error: 'Kolom atau nilai data tidak valid.' });
         }
         try {
-          const updated = inserting
-            ? await dataStore.insertData(name, body.values)
-            : await dataStore.updateData(name, body.original, body.values, body.id);
-          if (!updated) return json(409, { code: 'stale', error: 'Data sudah berubah atau tidak dapat ditemukan. Muat ulang data sebelum mencoba lagi.' });
+          const updated = deleting ? await dataStore.deleteData(name, body.original, body.id)
+            : inserting ? await dataStore.insertData(name, body.values)
+              : await dataStore.updateData(name, body.original, body.values, body.id);
+          if (!updated) return json(409, { code: 'stale', error: deleting
+            ? 'Data sudah berubah, tidak ditemukan, atau terdapat beberapa baris identik. Muat ulang data sebelum mencoba lagi.'
+            : 'Data sudah berubah atau tidak dapat ditemukan. Muat ulang data sebelum mencoba lagi.' });
+          if (deleting) return json(200, { deleted: true });
           return json(inserting ? 201 : 200, { row: visibleDataRow(updated, columns, rowKey) });
         } catch (err) {
           if (err.code === '23505') return json(409, { code: 'duplicate', error: 'Nama atau kode tersebut sudah digunakan.' });
           if (err.code === '23502' || err.code === '23514') return json(400, { error: 'Nilai tidak sesuai ketentuan database.' });
-          if (err.code === '23503') return json(409, { error: 'Data masih digunakan oleh data lain dan tidak dapat diubah.' });
-          if (err.code === '42501') return json(403, { error: 'Tidak ada izin untuk mengubah data ini.' });
-          console.error(`Failed to update ${name} data: ${err.code || err.name}`);
-          return json(502, { error: 'Tidak bisa menyimpan data ke database.' });
+          if (err.code === '23503') return json(409, { error: `Data masih digunakan oleh data lain dan tidak dapat ${deleting ? 'dihapus' : 'diubah'}.` });
+          if (err.code === '42501') return json(403, { error: `Tidak ada izin untuk ${deleting ? 'menghapus' : 'mengubah'} data ini.` });
+          console.error(`Failed to ${deleting ? 'delete' : 'update'} ${name} data: ${err.code || err.name}`);
+          return json(502, { error: deleting ? 'Tidak bisa menghapus data dari database.' : 'Tidak bisa menyimpan data ke database.' });
         }
       }
-      if (request.method !== 'GET') return json(405, { error: insertSql ? 'Gunakan GET, POST, atau PATCH.' : 'Gunakan GET atau PATCH.' });
+      if (request.method !== 'GET') return json(405, { error: insertSql ? 'Gunakan GET, POST, PATCH, atau DELETE.' : 'Gunakan GET, PATCH, atau DELETE.' });
       const offsets = url.searchParams.getAll('offset');
       if (offsets.length > 1 || (offsets.length && !/^\d+$/.test(offsets[0]))) {
         return json(400, { error: 'Posisi data tidak valid.' });

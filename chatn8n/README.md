@@ -9,7 +9,7 @@ Browser (HP/iPad, harus masuk Tailscale)
   │  http://100.110.217.94:3000
   ▼
 server.mjs — Node.js tanpa dependensi
-  ├─ GET/POST/PATCH /api/data/{katering,murid,layanan,pengetahuan} → PostgreSQL
+  ├─ GET/POST/PATCH/DELETE /api/data/{katering,murid,layanan,pengetahuan} → PostgreSQL
   │  POST /api/chat + Basic Auth (password hanya di server)
   ▼
 Webhook n8n → workflow "Chatbot Internal - Gemini & Postgres"
@@ -75,12 +75,13 @@ Setelah laptop direstart, semuanya menyala sendiri: n8n dan PostgreSQL otomatis 
 - **Memilih jenis data.** Buka **Data** dari menu chat. Halaman membuka **Katering** secara bawaan. Pilihan **Katering**, **Murid**, **Layanan**, dan **Pengetahuan** tercermin pada parameter `jenis` di URL, misalnya `/data?jenis=pengetahuan`. Gunakan **Kembali ke chat** untuk kembali ke percakapan.
 - **Menelusuri data.** Aplikasi memuat hingga 50 baris per halaman melalui `GET /api/data/:dataset?offset=…`. Data ditampilkan sebagai tabel di layar lebar dan kartu berlabel di ponsel. Gunakan **Sebelumnya** dan **Selanjutnya** untuk berpindah halaman, atau **Coba lagi** jika daftar gagal dimuat.
 - **Menambah dan mengubah.** Tekan tombol **Tambah** pada jenis data yang dipilih untuk membuka formulir kosong, atau pilih baris maupun kartu untuk mengubah entri. Formulir mengikuti kolom, aturan wajib isi, dan batas panjang yang diberikan API. **Simpan** mengirim `POST` untuk entri baru atau `PATCH` untuk perubahan. Setelah tersimpan, daftar dimuat ulang. Penambahan kembali ke halaman pertama.
-- **Konflik penyimpanan.** Server memvalidasi origin, jenis data, dan kolom yang diizinkan. Saat mengubah entri, server membandingkan nilai awal dengan data di PostgreSQL untuk mencegah pembaruan lain tertimpa. Jika data sudah berubah atau hasil penyimpanan belum pasti, gunakan **Muat ulang data** di formulir sebelum mencoba lagi.
+- **Menghapus.** Buka baris atau kartu, tekan ikon tempat sampah merah di pojok kanan atas, lalu pilih **Hapus** untuk mengonfirmasi penghapusan permanen atau **Batal** untuk kembali ke formulir. Browser mengirim `DELETE /api/data/:dataset` hanya setelah konfirmasi. Daftar dimuat ulang setelah server mengonfirmasi keberhasilan.
+- **Konflik perubahan.** Server memvalidasi origin, jenis data, dan kolom yang diizinkan. Saat mengubah atau menghapus entri, server mencocokkan nilai awal dengan data di PostgreSQL. Penghapusan ditolak jika tidak ada satu baris yang cocok, termasuk jika ada beberapa baris identik. Jika data sudah berubah atau hasil permintaan belum pasti, gunakan **Muat ulang data** sebelum mencoba lagi.
 
 ## Keamanan
 
 - Password Basic Auth hanya ada di `.env` server (chmod 600) dan credential n8n — tidak pernah sampai ke browser atau Git.
-- Server hanya mendengarkan IP Tailscale, bukan seluruh antarmuka jaringan; akses mengikuti izin Tailscale. Aplikasi ini tidak punya login pengguna terpisah, sehingga perangkat yang bisa mengakses `/data` juga bisa mengubah data di sana.
+- Server hanya mendengarkan IP Tailscale, bukan seluruh antarmuka jaringan; akses mengikuti izin Tailscale. Aplikasi ini tidak punya login pengguna terpisah, sehingga perangkat yang bisa mengakses `/data` juga bisa mengubah dan menghapus data di sana.
 - Jangan mengekspos port 3000 ke internet publik, dan jangan memakai browser bersama untuk percakapan rahasia (sesi tersimpan di localStorage tanpa nama pengguna).
 
 ## Sisi n8n (workflow yang dihubungi)
@@ -145,5 +146,6 @@ Untuk memeriksa pengetahuan sekolah, gunakan salah satu contoh pertanyaan di ata
 | "n8n tidak mengirim balasan" | Workflow belum dipublikasikan atau respons node terakhir tidak memiliki field `output` berisi teks |
 | Data murid atau katering belum ditemukan | Periksa kata kunci, isi tabel `knowledge`, dan hasil tool PostgreSQL di **Executions** |
 | Data gagal disimpan karena sudah berubah | Muat ulang data, lalu ulangi perubahan agar tidak menimpa pembaruan lain |
+| Saat menghapus muncul “Gunakan GET, POST, atau PATCH.” | Layanan masih menjalankan server versi lama. Jalankan `systemctl --user restart chatn8n`, lalu muat ulang `/data`. |
 | Halaman tidak terbuka dari HP | Perangkat belum terhubung Tailscale, atau service tidak berjalan — cek `systemctl --user status chatn8n` |
 | *Open chat* di editor n8n gagal | Cek `N8N_EDITOR_BASE_URL` di compose n8n |

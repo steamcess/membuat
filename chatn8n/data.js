@@ -21,6 +21,10 @@ const editError = document.querySelector('#edit-error');
 const editRefresh = document.querySelector('#edit-refresh');
 const editCancel = document.querySelector('#edit-cancel');
 const editSave = document.querySelector('#edit-save');
+const editDelete = document.querySelector('#edit-delete');
+const deleteConfirm = document.querySelector('#delete-confirm');
+const deleteForm = document.querySelector('#delete-form');
+const deleteMessage = document.querySelector('#delete-message');
 
 const descriptions = {
   katering: { title: 'Penyedia katering', description: 'Nama, alamat, dan kontak penyedia katering.', entry: 'katering' },
@@ -70,6 +74,7 @@ function openEditor(name, columns, row = null) {
   }
   editing = { name, columns, original, inputs, row };
   editTitle.textContent = `${row ? 'Ubah' : 'Tambah'} ${descriptions[name].entry}`;
+  editDelete.hidden = !row;
   editFields.replaceChildren(fields);
   editFeedback.hidden = true;
   editRefresh.hidden = true;
@@ -144,6 +149,10 @@ async function loadData(notice = '') {
 
     pageSize = data.pageSize;
     hasMore = data.hasMore === true;
+    if (requestedOffset > 0 && data.rows.length === 0) {
+      offset = Math.max(0, requestedOffset - pageSize);
+      return loadData(notice);
+    }
     renderTable(requestedName, data.columns, data.rows);
     add.onclick = () => openEditor(requestedName, data.columns);
     add.disabled = false;
@@ -168,11 +177,11 @@ async function loadData(notice = '') {
   }
 }
 
-function setSaving(value) {
+function setSaving(value, deleting) {
   saving = value;
-  editSave.disabled = editCancel.disabled = editRefresh.disabled = value;
+  editSave.disabled = editCancel.disabled = editRefresh.disabled = editDelete.disabled = value;
   for (const input of editFields.querySelectorAll('textarea')) input.disabled = value;
-  editSave.textContent = value ? 'Menyimpan…' : 'Simpan';
+  editSave.textContent = value ? (deleting ? 'Menghapus…' : 'Menyimpan…') : 'Simpan';
 }
 
 function closeEditor() {
@@ -187,7 +196,22 @@ editRefresh.addEventListener('click', () => {
   editor.close();
   loadData();
 });
-editForm.addEventListener('submit', async (event) => {
+editDelete.addEventListener('click', () => {
+  if (!editing?.row || saving) return;
+  const { name, original, columns } = editing;
+  const label = String(original[columns[0].key] ?? '').trim();
+  const detail = label.length > 100 ? `${label.slice(0, 100)}…` : label;
+  deleteMessage.textContent = `Hapus ${descriptions[name].entry}${detail ? ` “${detail}”` : ' ini'} secara permanen? Tindakan ini tidak dapat dibatalkan.`;
+  deleteConfirm.showModal();
+});
+deleteForm.addEventListener('submit', (event) => {
+  if (event.submitter?.value !== 'delete') return;
+  event.preventDefault();
+  deleteConfirm.close();
+  if (!editing?.row || saving) return;
+  writeData(editing, 'DELETE', { id: editing.row.id, original: editing.original });
+});
+editForm.addEventListener('submit', (event) => {
   event.preventDefault();
   if (!editing || saving) return;
   const state = editing;
@@ -200,23 +224,27 @@ editForm.addEventListener('submit', async (event) => {
     status.textContent = 'Tidak ada perubahan.';
     return;
   }
+  writeData(state, state.row ? 'PATCH' : 'POST', state.row ? { id: state.row.id, original: state.original, values } : { values });
+});
 
+async function writeData(state, method, payload) {
+  const deleting = method === 'DELETE';
   editFeedback.hidden = true;
   editRefresh.hidden = true;
-  setSaving(true);
+  setSaving(true, deleting);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 15000);
   let saved = false;
   try {
     const response = await fetch(`/api/data/${state.name}`, {
-      method: state.row ? 'PATCH' : 'POST',
+      method,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(state.row ? { id: state.row.id, original: state.original, values } : { values }),
+      body: JSON.stringify(payload),
       signal: controller.signal,
     });
     const data = await response.json();
     if (!response.ok) {
-      const error = new Error(data.error || 'Tidak bisa menyimpan data.');
+      const error = new Error(data.error || (deleting ? 'Tidak bisa menghapus data.' : 'Tidak bisa menyimpan data.'));
       error.code = data.code;
       error.status = response.status;
       throw error;
@@ -226,7 +254,7 @@ editForm.addEventListener('submit', async (event) => {
   } catch (error) {
     const uncertain = error.name === 'AbortError' || error instanceof TypeError || error instanceof SyntaxError || error.status >= 500;
     editError.textContent = uncertain
-      ? 'Hasil penyimpanan belum dapat dipastikan. Muat ulang data sebelum mencoba lagi.'
+      ? `Hasil ${deleting ? 'penghapusan' : 'penyimpanan'} belum dapat dipastikan. Muat ulang data sebelum mencoba lagi.`
       : error.message;
     editRefresh.hidden = !(uncertain || error.code === 'stale');
     editFeedback.hidden = false;
@@ -236,9 +264,9 @@ editForm.addEventListener('submit', async (event) => {
   }
   if (saved) {
     if (!state.row) offset = 0;
-    loadData('Data berhasil disimpan.');
+    loadData(deleting ? 'Data berhasil dihapus.' : 'Data berhasil disimpan.');
   }
-});
+}
 
 for (const button of dataOptions) {
   button.addEventListener('click', () => {

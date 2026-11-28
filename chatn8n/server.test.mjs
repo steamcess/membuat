@@ -81,9 +81,7 @@ test('data API serves the viewer and lists only allowed datasets with validated 
   for (const query of ['offset=-1', 'offset=x', 'offset=1e3', 'offset=9007199254740992', 'offset=1&offset=2']) {
     assert.equal((await fetch(`${origin}/api/data/katering?${query}`)).status, 400);
   }
-  for (const method of ['PUT', 'DELETE']) {
-    assert.equal((await fetch(`${origin}/api/data/katering`, { method })).status, 405);
-  }
+  assert.equal((await fetch(`${origin}/api/data/katering`, { method: 'PUT' })).status, 405);
   assert.equal(calls.length, 3);
 
   const unconfigured = await listen(createChatServer({ webhookUrl: 'http://127.0.0.1:1', authorization: 'Basic x' }), t);
@@ -156,6 +154,47 @@ test('data update validates origin, payload, conflicts, and only permits approve
   assert.equal((await fetch(`${unconfigured}/api/data/katering`, {
     method: 'PATCH', headers: { Origin: unconfigured, 'Content-Type': 'application/json' }, body: JSON.stringify({ original, values }),
   })).status, 503);
+});
+
+test('data deletion requires a valid same-origin snapshot and preserves conflicting rows', async (t) => {
+  const catering = { nama_catering: "Dapur 'Contoh'", alamat: null, contact_person: 'Nina' };
+  const topic = { judul: 'Topik', kategori: null, isi: 'Catatan' };
+  const calls = [];
+  const dataStore = createPostgresDataStore({}, async (config, sql, params) => {
+    calls.push({ sql, params });
+    if (params[0] === 'referenced') throw Object.assign(new Error('private detail'), { code: '23503' });
+    return params[0] === 'stale' ? [] : [{ deleted: '1' }];
+  });
+  const origin = await listen(createChatServer({ dataStore }), t);
+  const request = (name, body, requestOrigin = origin) => fetch(`${origin}/api/data/${name}`, {
+    method: 'DELETE', headers: { Origin: requestOrigin, 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+  });
+  assert.equal((await request('katering', { original: catering }, 'https://untrusted.example')).status, 403);
+  assert.equal((await request('n8n_chat_histories', { original: catering })).status, 404);
+  assert.equal((await request('katering', { original: catering, values: catering })).status, 400);
+  assert.equal((await request('pengetahuan', { original: topic })).status, 400);
+  assert.equal((await request('pengetahuan', { original: topic, id: '9223372036854775808' })).status, 400);
+  assert.equal(calls.length, 0);
+
+  const deleted = await request('katering', { original: catering });
+  assert.equal(deleted.status, 200);
+  assert.deepEqual(await deleted.json(), { deleted: true });
+  assert.deepEqual(calls[0].params, [catering.nama_catering, null, 'Nina']);
+  assert.match(calls[0].sql, /DELETE FROM knowledge\.katering_sekolah/);
+  assert.match(calls[0].sql, /\(SELECT count\(\*\) FROM matching\) = 1/);
+  assert.ok(!calls[0].sql.includes(catering.nama_catering));
+
+  const id = '9007199254740993';
+  assert.equal((await request('pengetahuan', { original: topic, id })).status, 200);
+  assert.deepEqual(calls[1].params, ['Topik', null, 'Catatan', id]);
+  assert.match(calls[1].sql, /target\.id = \$4/);
+
+  const stale = await request('katering', { original: { ...catering, nama_catering: 'stale' } });
+  assert.equal(stale.status, 409);
+  assert.equal((await stale.json()).code, 'stale');
+  const referenced = await request('katering', { original: { ...catering, nama_catering: 'referenced' } });
+  assert.equal(referenced.status, 409);
+  assert.match((await referenced.json()).error, /tidak dapat dihapus/);
 });
 
 test('data store uses fixed queries, limits each page, and binds old and new values', async () => {

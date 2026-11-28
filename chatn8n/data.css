@@ -123,10 +123,14 @@
   box-shadow: none;
 }
 .edit-form:focus-within { box-shadow: none; }
-.edit-header { display: flex; flex-shrink: 0; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 20px 20px 12px; }
+.edit-header { display: flex; flex-shrink: 0; align-items: center; justify-content: space-between; gap: 12px; padding: 20px 20px 12px; }
 .edit-header .data-eyebrow { margin-bottom: 4px; }
 .edit-header h2 { margin: 0; font-size: 20px; font-weight: 650; letter-spacing: -.5px; }
 .edit-header h2:focus { outline: none; }
+.edit-delete { flex: none; display: grid; place-items: center; width: 44px; padding: 0; border-radius: 10px; background: transparent; color: #ae302b; }
+.edit-delete svg { width: 20px; height: 20px; }
+.delete-message { margin: 0; padding: 4px 20px 18px; overflow-y: auto; overflow-wrap: anywhere; font-size: 14px; line-height: 1.5; }
+.delete-submit { background: #ae302b; color: white; }
 .edit-fields { display: grid; gap: 14px; min-height: 0; padding: 4px 20px 18px; overflow-y: auto; overscroll-behavior: contain; }
 .edit-field { display: flex; flex-direction: column; gap: 6px; }
 .edit-field label { color: var(--ink); font-size: 12px; font-weight: 600; }
@@ -161,6 +165,8 @@
   .data-table tbody tr:hover { background: #f4f8ef; }
   .edit-cancel:not(:disabled):hover { background: #eef2e9; }
   .edit-save:not(:disabled):hover { background: #a2e75f; }
+  .edit-delete:not(:disabled):hover { background: #fcf1ed; }
+  .delete-submit:hover { background: #902522; }
 }
 @media (max-width: 767px) {
   .data-page { background: var(--paper); }

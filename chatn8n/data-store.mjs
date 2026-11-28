@@ -8,6 +8,7 @@ const topicFields = 'id, judul, kategori, isi';
 export const DATA_SETS = {
   pengetahuan: {
     title: 'Pengetahuan',
+    table: 'knowledge.pengetahuan',
     rowKey: 'id',
     columns: [
       { key: 'judul', label: 'Judul', required: true, maxLength: 200 },
@@ -34,6 +35,7 @@ export const DATA_SETS = {
   },
   katering: {
     title: 'Penyedia katering',
+    table: 'knowledge.katering_sekolah',
     columns: [
       { key: 'nama_catering', label: 'Nama katering', requiredOnCreate: true },
       { key: 'alamat', label: 'Alamat' },
@@ -71,6 +73,7 @@ export const DATA_SETS = {
   },
   murid: {
     title: 'Murid',
+    table: 'knowledge.murid',
     columns: [
       { key: 'kode_murid', label: 'Kode murid', requiredOnCreate: true },
       { key: 'nama', label: 'Nama', requiredOnCreate: true },
@@ -119,6 +122,7 @@ export const DATA_SETS = {
   },
   layanan: {
     title: 'Layanan',
+    table: 'knowledge.layanan_infrastruktur',
     columns: [
       { key: 'nama_layanan', label: 'Nama layanan', requiredOnCreate: true },
       { key: 'fungsi', label: 'Fungsi' },
@@ -194,6 +198,29 @@ export function createPostgresDataStore(config, query = queryPostgres) {
       const rows = await query(config, updateSql, params);
       if (rows.length > 1) throw new Error('Pembaruan menghasilkan lebih dari satu baris.');
       return rows[0] ?? null;
+    },
+    async deleteData(name, original, rowId) {
+      if (!Object.hasOwn(DATA_SETS, name)) throw new RangeError('Jenis data tidak dikenal.');
+      const { table, columns, rowKey } = DATA_SETS[name];
+      const params = columns.map(({ key }) => original[key]);
+      const conditions = columns.map(({ key }, index) => `target.${key} IS NOT DISTINCT FROM $${index + 1}`);
+      if (rowKey) {
+        params.push(rowId);
+        conditions.push(`target.${rowKey} = $${params.length}`);
+      }
+      const matches = conditions.join(' AND ');
+      const rows = await query(config, `
+        WITH matching AS MATERIALIZED (
+          SELECT target.tableoid, target.ctid FROM ${table} AS target
+          WHERE ${matches}
+          LIMIT 2
+        )
+        DELETE FROM ${table} AS target USING matching
+        WHERE target.tableoid = matching.tableoid AND target.ctid = matching.ctid
+          AND (SELECT count(*) FROM matching) = 1 AND ${matches}
+        RETURNING 1 AS deleted
+      `, params);
+      return rows.length === 1;
     },
   };
 }
