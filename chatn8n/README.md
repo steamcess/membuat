@@ -96,6 +96,8 @@ Setelah laptop direstart, semuanya menyala sendiri: n8n dan PostgreSQL otomatis 
 
 ### Kirim email dari web chat
 
+Notifikasi email otomatis untuk hasil Gemini sedang dijeda. Pada workflow yang dipublikasikan, node **Kirim Email Berhasil** dan **Kirim Email Gagal** dinonaktifkan. Untuk melanjutkan notifikasi, aktifkan kembali kedua node di editor n8n lalu publikasikan workflow.
+
 Ketik perintah berikut di web chat untuk mengirim email ke alamat yang sudah dikonfigurasi.
 
 ```text
