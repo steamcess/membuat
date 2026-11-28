@@ -3,8 +3,11 @@ const appShell = document.querySelector('#app-shell');
 const drawer = document.querySelector('#sessions-drawer');
 const backdrop = document.querySelector('#drawer-backdrop');
 const toggleSessions = document.querySelector('#toggle-sessions');
+const mobileMenuToggle = document.querySelector('#mobile-menu-toggle');
+const mobileSessionToggle = document.querySelector('#mobile-toggle-session-list');
 const closeSessions = document.querySelector('#close-sessions');
 const refreshSessions = document.querySelector('#refresh-sessions');
+const sessionsContent = document.querySelector('#sessions-content');
 const sessionsScroll = document.querySelector('#sessions-scroll');
 const sessionsSubtitle = document.querySelector('#sessions-subtitle');
 const sessionList = document.querySelector('#session-list');
@@ -13,22 +16,26 @@ const toggleSessionLimit = document.querySelector('#toggle-session-limit');
 const sessionLimitLabel = document.querySelector('#session-limit-label');
 const sessionsStatus = document.querySelector('#sessions-status');
 const sessionCount = document.querySelector('#session-count');
+const mobileSessionCount = document.querySelector('#mobile-session-count');
 const messages = document.querySelector('#messages');
 const welcomeTemplate = document.querySelector('#welcome-template');
 const input = document.querySelector('#message');
 const form = document.querySelector('#chat-form');
 const send = document.querySelector('#send');
 const newChat = document.querySelector('#new-chat');
+const mobileNewChat = document.querySelector('#mobile-new-chat');
 const status = document.querySelector('#status');
 const error = document.querySelector('#error');
 const sessionPattern = /^[a-f0-9]{32}$/;
 const desktopQuery = matchMedia('(min-width: 900px)');
+const mobileQuery = matchMedia('(max-width: 767px)');
 const SESSION_LIMIT_COLLAPSED = 9;
 const SESSION_LIMIT_EXPANDED = 20;
 
 let busy = false;
 let sessions = [];
 let sessionsExpanded = false;
+let mobileSessionListExpanded = true;
 
 function createSession() {
   // getRandomValues also works on the HTTP address used inside Tailscale.
@@ -59,44 +66,60 @@ function saveSession() {
 
 function setBusy(nextBusy, statusMessage = '') {
   busy = nextBusy;
-  send.disabled = input.disabled = newChat.disabled = refreshSessions.disabled = nextBusy;
+  send.disabled = input.disabled = newChat.disabled = mobileNewChat.disabled = refreshSessions.disabled = nextBusy;
   status.textContent = statusMessage;
   for (const btn of sessionList.querySelectorAll('.session-item')) {
     btn.disabled = nextBusy;
   }
 }
 
+function setDrawerExpanded(expanded) {
+  toggleSessions.setAttribute('aria-expanded', String(expanded));
+  mobileMenuToggle.setAttribute('aria-expanded', String(expanded));
+  mobileMenuToggle.setAttribute('aria-label', expanded ? 'Tutup menu' : 'Buka menu');
+}
+
+function focusDrawerToggle() {
+  (mobileQuery.matches ? mobileMenuToggle : toggleSessions).focus();
+}
+
 function openDrawer() {
   if (desktopQuery.matches) {
     appShell.classList.remove('sidebar-collapsed');
-    toggleSessions.setAttribute('aria-expanded', 'true');
+    setDrawerExpanded(true);
     return;
   }
   drawer.classList.add('open');
   backdrop.hidden = false;
-  toggleSessions.setAttribute('aria-expanded', 'true');
+  setDrawerExpanded(true);
   closeSessions.focus();
 }
 
 function closeDrawer() {
+  const restoreFocus = drawer.contains(document.activeElement);
   if (desktopQuery.matches) {
     appShell.classList.add('sidebar-collapsed');
-    toggleSessions.setAttribute('aria-expanded', 'false');
-    return;
+  } else {
+    drawer.classList.remove('open');
+    backdrop.hidden = true;
   }
-  drawer.classList.remove('open');
-  backdrop.hidden = true;
-  toggleSessions.setAttribute('aria-expanded', 'false');
+  setDrawerExpanded(false);
+  if (restoreFocus) focusDrawerToggle();
 }
 
 function syncToggleAria() {
   if (desktopQuery.matches) {
     drawer.classList.remove('open');
     backdrop.hidden = true;
-    toggleSessions.setAttribute('aria-expanded', String(!appShell.classList.contains('sidebar-collapsed')));
+    setDrawerExpanded(!appShell.classList.contains('sidebar-collapsed'));
   } else {
-    toggleSessions.setAttribute('aria-expanded', String(drawer.classList.contains('open')));
+    setDrawerExpanded(drawer.classList.contains('open'));
   }
+}
+
+function syncMobileSessionList() {
+  sessionsContent.hidden = mobileQuery.matches && !mobileSessionListExpanded;
+  mobileSessionToggle.setAttribute('aria-expanded', String(mobileSessionListExpanded));
 }
 
 function updateWelcomeSessionsButton() {
@@ -567,7 +590,11 @@ function renderMessages(list) {
     const welcomeBtn = document.querySelector('#welcome-sessions');
     if (welcomeBtn) {
       welcomeBtn.hidden = sessions.length === 0;
-      welcomeBtn.addEventListener('click', openDrawer);
+      welcomeBtn.addEventListener('click', () => {
+        mobileSessionListExpanded = true;
+        syncMobileSessionList();
+        openDrawer();
+      });
     }
     return;
   }
@@ -609,11 +636,9 @@ function renderSessionList() {
   const visibleLimit = sessionsExpanded ? SESSION_LIMIT_EXPANDED : SESSION_LIMIT_COLLAPSED;
   const visibleSessions = cappedSessions.slice(0, visibleLimit);
 
-  if (cappedSessions.length > 0) {
-    sessionCount.textContent = String(cappedSessions.length);
-    sessionCount.hidden = false;
-  } else {
-    sessionCount.hidden = true;
+  for (const count of [sessionCount, mobileSessionCount]) {
+    count.textContent = String(cappedSessions.length);
+    count.hidden = cappedSessions.length === 0;
   }
 
   sessionsSubtitle.textContent = canToggleLimit
@@ -735,13 +760,15 @@ function resizeInput() {
 renderMessages(session.messages);
 renderSessionList();
 saveSession();
+syncMobileSessionList();
 syncToggleAria();
 loadSessions();
 syncCurrentSession();
 
 desktopQuery.addEventListener('change', syncToggleAria);
+mobileQuery.addEventListener('change', syncMobileSessionList);
 
-toggleSessions.addEventListener('click', () => {
+function toggleDrawer() {
   if (desktopQuery.matches) {
     if (appShell.classList.contains('sidebar-collapsed')) openDrawer();
     else closeDrawer();
@@ -749,6 +776,13 @@ toggleSessions.addEventListener('click', () => {
   }
   if (drawer.classList.contains('open')) closeDrawer();
   else openDrawer();
+}
+
+toggleSessions.addEventListener('click', toggleDrawer);
+mobileMenuToggle.addEventListener('click', toggleDrawer);
+mobileSessionToggle.addEventListener('click', () => {
+  mobileSessionListExpanded = !mobileSessionListExpanded;
+  syncMobileSessionList();
 });
 
 closeSessions.addEventListener('click', closeDrawer);
@@ -768,7 +802,7 @@ toggleSessionLimit.addEventListener('click', () => {
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape' && !desktopQuery.matches && drawer.classList.contains('open')) {
     closeDrawer();
-    toggleSessions.focus();
+    focusDrawerToggle();
   }
 });
 
@@ -780,7 +814,7 @@ input.addEventListener('keydown', (event) => {
   }
 });
 
-newChat.addEventListener('click', () => {
+function startNewChat() {
   if (busy) return;
   if (session.messages.length === 0) {
     if (!desktopQuery.matches) closeDrawer();
@@ -794,7 +828,10 @@ newChat.addEventListener('click', () => {
   renderSessionList();
   if (!desktopQuery.matches) closeDrawer();
   if (matchMedia('(pointer: fine)').matches) input.focus();
-});
+}
+
+newChat.addEventListener('click', startNewChat);
+mobileNewChat.addEventListener('click', startNewChat);
 
 form.addEventListener('submit', async (event) => {
   event.preventDefault();

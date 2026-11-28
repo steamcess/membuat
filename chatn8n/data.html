@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#fbfcf9">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/data.css">
+  <script src="/data.js" defer></script>
+  <title>Data tersimpan</title>
+</head>
+<body class="data-page">
+  <div class="data-shell">
+    <header class="data-header">
+      <a class="data-back" href="/">
+        <svg aria-hidden="true" viewBox="0 0 20 20" fill="none"><path d="m11.5 4.5-5.5 5.5 5.5 5.5M6.5 10h9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Kembali ke chat
+      </a>
+    </header>
+
+    <main class="data-main">
+      <div class="data-layout">
+        <nav class="data-nav" aria-label="Pilih jenis data">
+          <button class="data-option" type="button" data-dataset="katering" aria-pressed="true">
+            <svg aria-hidden="true" viewBox="0 0 20 20" fill="none"><path d="M4 16h12M5 13.5V8.7L10 5l5 3.7v4.8M8 13.5v-3h4v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Katering
+          </button>
+          <button class="data-option" type="button" data-dataset="murid" aria-pressed="false">
+            <svg aria-hidden="true" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="6.5" r="2.5" stroke="currentColor" stroke-width="1.5"/><path d="M4.5 15.5c.5-2.4 2.6-4 5.5-4s5 1.6 5.5 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            Murid
+          </button>
+        </nav>
+
+        <section id="data-results" class="data-results" aria-labelledby="data-title" aria-busy="true">
+          <div class="data-results-head">
+            <div>
+              <p class="data-eyebrow">DAFTAR</p>
+              <h1 id="data-title">Penyedia katering</h1>
+              <p id="data-description">Nama, alamat, dan kontak penyedia katering.</p>
+            </div>
+            <span class="data-edit-hint">Ketuk untuk ubah</span>
+          </div>
+
+          <p id="data-status" class="data-status" role="status" aria-live="polite">Memuat data…</p>
+          <button id="data-retry" class="data-retry" type="button" hidden>Coba lagi</button>
+          <div id="data-table-wrap" class="data-table-wrap" hidden>
+            <table class="data-table" aria-labelledby="data-title">
+              <thead id="data-table-head"></thead>
+              <tbody id="data-table-body"></tbody>
+            </table>
+          </div>
+          <nav id="data-pagination" class="data-pagination" aria-label="Halaman data" hidden>
+            <button id="data-previous" type="button">Sebelumnya</button>
+            <span id="data-page-label"></span>
+            <button id="data-next" type="button">Selanjutnya</button>
+          </nav>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <dialog id="data-editor" class="data-editor" aria-labelledby="edit-title">
+    <form id="edit-form" class="edit-form">
+      <div class="edit-header">
+        <div>
+          <p class="data-eyebrow">UBAH DATA</p>
+          <h2 id="edit-title" tabindex="-1" autofocus>Ubah data</h2>
+        </div>
+      </div>
+      <div id="edit-fields" class="edit-fields"></div>
+      <div id="edit-feedback" class="edit-feedback" hidden>
+        <p id="edit-error" role="alert"></p>
+        <button id="edit-refresh" type="button" hidden>Muat ulang data</button>
+      </div>
+      <div class="edit-actions">
+        <button id="edit-cancel" class="edit-cancel" type="button">Batal</button>
+        <button id="edit-save" class="edit-save" type="submit">Simpan</button>
+      </div>
+    </form>
+  </dialog>
+</body>
+</html>

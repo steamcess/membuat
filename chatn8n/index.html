@@ -12,7 +12,13 @@
 </head>
 <body>
   <div id="app-shell" class="app-shell">
-    <aside id="sessions-drawer" class="sessions-panel" aria-label="Daftar sesi percakapan">
+    <button id="mobile-menu-toggle" class="mobile-menu-toggle" type="button" aria-label="Buka menu" aria-expanded="false" aria-controls="sessions-drawer">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none"><path d="m5 6 6 6-6 6M14 18h5" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"/></svg>
+      </span>
+    </button>
+
+    <aside id="sessions-drawer" class="sessions-panel" aria-label="Menu dan riwayat percakapan">
       <div class="sessions-head">
         <div>
           <h2>Riwayat Sesi</h2>
@@ -27,16 +33,37 @@
           </button>
         </div>
       </div>
-      <p id="sessions-status" class="sessions-status" role="status" aria-live="polite"></p>
-      <div id="sessions-more-wrap" class="sessions-more-wrap" hidden>
-        <button id="toggle-session-limit" class="session-limit-btn" type="button" aria-expanded="false" aria-controls="session-list">
-          <span id="session-limit-label"></span>
-          <svg aria-hidden="true" viewBox="0 0 20 20" fill="none"><path d="m5 7.5 5 5 5-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div class="mobile-menu-actions">
+        <button id="mobile-new-chat" class="mobile-menu-action" type="button">
+          <svg aria-hidden="true" viewBox="0 0 20 20" fill="none"><path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <span>Chat baru</span>
+        </button>
+        <button id="mobile-toggle-session-list" class="mobile-menu-action" type="button" aria-expanded="true" aria-controls="sessions-content">
+          <svg aria-hidden="true" viewBox="0 0 20 20" fill="none"><path d="M3.5 5.5h13M3.5 10h13M3.5 14.5h9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <span>Sesi</span>
+          <span id="mobile-session-count" class="count-pill" hidden></span>
+          <svg class="mobile-menu-chevron" aria-hidden="true" viewBox="0 0 20 20" fill="none"><path d="m5 7.5 5 5 5-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
       </div>
-      <div id="sessions-scroll" class="sessions-scroll">
-        <ul id="session-list" class="session-list"></ul>
+      <div id="sessions-content" class="sessions-content">
+        <p id="sessions-status" class="sessions-status" role="status" aria-live="polite"></p>
+        <div id="sessions-more-wrap" class="sessions-more-wrap" hidden>
+          <button id="toggle-session-limit" class="session-limit-btn" type="button" aria-expanded="false" aria-controls="session-list">
+            <span id="session-limit-label"></span>
+            <svg aria-hidden="true" viewBox="0 0 20 20" fill="none"><path d="m5 7.5 5 5 5-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+        <div id="sessions-scroll" class="sessions-scroll">
+          <ul id="session-list" class="session-list"></ul>
+        </div>
       </div>
+      <nav class="sidebar-navigation" aria-label="Navigasi halaman">
+        <a class="sidebar-data-link" href="/data">
+          <svg aria-hidden="true" viewBox="0 0 20 20" fill="none"><rect x="3.5" y="4" width="13" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3.5 8h13M8 8v8" stroke="currentColor" stroke-width="1.5"/></svg>
+          <span>Data</span>
+          <svg class="sidebar-link-arrow" aria-hidden="true" viewBox="0 0 20 20" fill="none"><path d="m8 5 5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+      </nav>
     </aside>
 
     <div id="drawer-backdrop" class="drawer-backdrop" hidden></div>
