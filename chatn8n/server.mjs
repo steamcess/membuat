@@ -18,14 +18,22 @@ const files = {
 const sessionIdPattern = /^[a-f0-9]{32}$/;
 const MAX_DATA_UPDATE_BYTES = 512 * 1024;
 
-function visibleDataRow(row, columns) {
-  return Object.fromEntries(columns.map(({ key }) => [key, row[key] ?? null]));
+function visibleDataRow(row, columns, rowKey) {
+  const visible = Object.fromEntries(columns.map(({ key }) => [key, row[key] ?? null]));
+  if (rowKey) visible[rowKey] = String(row[rowKey]);
+  return visible;
 }
 
-function validDataRow(row, columns) {
+function validDataRow(row, columns, inserting = false) {
   if (!row || typeof row !== 'object' || Array.isArray(row) || Object.keys(row).length !== columns.length) return false;
-  return columns.every(({ key }) => Object.hasOwn(row, key) &&
-    (row[key] === null || (typeof row[key] === 'string' && !row[key].includes('\0'))));
+  return columns.every(({ key, required, requiredOnCreate, maxLength }) => {
+    if (!Object.hasOwn(row, key)) return false;
+    const value = row[key];
+    const mustFill = required || (inserting && requiredOnCreate);
+    if (value === null) return !mustFill;
+    return typeof value === 'string' && !value.includes('\0') &&
+      (!mustFill || value.trim().length > 0) && (!maxLength || [...value].length <= maxLength);
+  });
 }
 
 export function createChatServer({ webhookUrl, authorization, sessionStore = null, dataStore = null }) {
@@ -57,8 +65,9 @@ export function createChatServer({ webhookUrl, authorization, sessionStore = nul
     if (dataMatch) {
       const name = dataMatch[1];
       if (!Object.hasOwn(DATA_SETS, name)) return json(404, { error: 'Jenis data tidak ditemukan.' });
-      const { title, columns } = DATA_SETS[name];
-      if (request.method === 'PATCH') {
+      const { title, columns, rowKey, insertSql } = DATA_SETS[name];
+      const inserting = request.method === 'POST' && Boolean(insertSql);
+      if (request.method === 'PATCH' || inserting) {
         if (request.headers.origin !== `http://${request.headers.host}`) return json(403, { error: 'Asal permintaan tidak diizinkan.' });
         if (request.headers['content-type']?.split(';')[0].trim() !== 'application/json') return json(415, { error: 'Gunakan JSON.' });
         if (!dataStore) return json(503, { error: 'Database belum dikonfigurasi.' });
@@ -75,15 +84,20 @@ export function createChatServer({ webhookUrl, authorization, sessionStore = nul
           body = JSON.parse(Buffer.concat(chunks).toString('utf8'));
         } catch { return json(400, { error: 'Format data tidak valid.' }); }
 
-        if (!body || typeof body !== 'object' || Array.isArray(body) || Object.keys(body).length !== 2 ||
-            !Object.hasOwn(body, 'original') || !Object.hasOwn(body, 'values') ||
-            !validDataRow(body.original, columns) || !validDataRow(body.values, columns)) {
+        const expectedKeys = inserting ? 1 : rowKey ? 3 : 2;
+        if (!body || typeof body !== 'object' || Array.isArray(body) || Object.keys(body).length !== expectedKeys ||
+            !Object.hasOwn(body, 'values') || !validDataRow(body.values, columns, inserting) ||
+            (!inserting && (!Object.hasOwn(body, 'original') || !validDataRow(body.original, columns))) ||
+            (!inserting && rowKey && (!Object.hasOwn(body, 'id') || typeof body.id !== 'string' ||
+              !/^[1-9]\d{0,18}$/.test(body.id) || BigInt(body.id) > 9223372036854775807n))) {
           return json(400, { error: 'Kolom atau nilai data tidak valid.' });
         }
         try {
-          const updated = await dataStore.updateData(name, body.original, body.values);
+          const updated = inserting
+            ? await dataStore.insertData(name, body.values)
+            : await dataStore.updateData(name, body.original, body.values, body.id);
           if (!updated) return json(409, { code: 'stale', error: 'Data sudah berubah atau tidak dapat ditemukan. Muat ulang data sebelum mencoba lagi.' });
-          return json(200, { row: visibleDataRow(updated, columns) });
+          return json(inserting ? 201 : 200, { row: visibleDataRow(updated, columns, rowKey) });
         } catch (err) {
           if (err.code === '23505') return json(409, { code: 'duplicate', error: 'Nama atau kode tersebut sudah digunakan.' });
           if (err.code === '23502' || err.code === '23514') return json(400, { error: 'Nilai tidak sesuai ketentuan database.' });
@@ -93,7 +107,7 @@ export function createChatServer({ webhookUrl, authorization, sessionStore = nul
           return json(502, { error: 'Tidak bisa menyimpan data ke database.' });
         }
       }
-      if (request.method !== 'GET') return json(405, { error: 'Gunakan GET atau PATCH.' });
+      if (request.method !== 'GET') return json(405, { error: insertSql ? 'Gunakan GET, POST, atau PATCH.' : 'Gunakan GET atau PATCH.' });
       const offsets = url.searchParams.getAll('offset');
       if (offsets.length > 1 || (offsets.length && !/^\d+$/.test(offsets[0]))) {
         return json(400, { error: 'Posisi data tidak valid.' });
@@ -103,7 +117,7 @@ export function createChatServer({ webhookUrl, authorization, sessionStore = nul
       if (!dataStore) return json(503, { error: 'Database belum dikonfigurasi.' });
       try {
         const { rows, hasMore } = await dataStore.listData(name, offset);
-        const visibleRows = rows.map((row) => visibleDataRow(row, columns));
+        const visibleRows = rows.map((row) => visibleDataRow(row, columns, rowKey));
         return json(200, { dataset: name, title, columns, offset, pageSize: DATA_PAGE_SIZE, rows: visibleRows, hasMore });
       } catch (err) {
         console.error(`Failed to load ${name} data: ${err.message}`);

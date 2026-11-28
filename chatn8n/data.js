@@ -4,6 +4,7 @@ const title = document.querySelector('#data-title');
 const description = document.querySelector('#data-description');
 const status = document.querySelector('#data-status');
 const retry = document.querySelector('#data-retry');
+const add = document.querySelector('#data-add');
 const tableWrap = document.querySelector('#data-table-wrap');
 const tableHead = document.querySelector('#data-table-head');
 const tableBody = document.querySelector('#data-table-body');
@@ -22,8 +23,10 @@ const editCancel = document.querySelector('#edit-cancel');
 const editSave = document.querySelector('#edit-save');
 
 const descriptions = {
-  katering: { title: 'Penyedia katering', description: 'Nama, alamat, dan kontak penyedia katering.' },
-  murid: { title: 'Murid', description: 'Kode, nama, kelas, dan informasi murid.' },
+  katering: { title: 'Penyedia katering', description: 'Nama, alamat, dan kontak penyedia katering.', entry: 'katering' },
+  murid: { title: 'Murid', description: 'Kode, nama, kelas, dan informasi murid.', entry: 'murid' },
+  layanan: { title: 'Layanan', description: 'Fungsi, akses, dan auto-start layanan.', entry: 'layanan' },
+  pengetahuan: { title: 'Pengetahuan', description: 'Topik dan catatan yang bisa dicari AI dari chat.', entry: 'topik' },
 };
 const requestedDataset = new URLSearchParams(location.search).get('jenis');
 let dataset = Object.hasOwn(descriptions, requestedDataset) ? requestedDataset : 'katering';
@@ -40,11 +43,12 @@ function updateSelection() {
   }
   title.textContent = descriptions[dataset].title;
   description.textContent = descriptions[dataset].description;
+  add.textContent = `Tambah ${descriptions[dataset].entry}`;
 }
 
-function openEditor(name, columns, row) {
+function openEditor(name, columns, row = null) {
   if (editor.open || saving) return;
-  const original = Object.fromEntries(columns.map(({ key }) => [key, row[key] ?? null]));
+  const original = Object.fromEntries(columns.map(({ key }) => [key, row?.[key] ?? null]));
   const inputs = new Map();
   const fields = document.createDocumentFragment();
   for (const column of columns) {
@@ -56,14 +60,16 @@ function openEditor(name, columns, row) {
     const input = document.createElement('textarea');
     input.id = label.htmlFor;
     input.name = column.key;
-    input.rows = column.key === 'alamat' ? 2 : 1;
+    input.rows = column.rows ?? (['alamat', 'catatan'].includes(column.key) ? 2 : 1);
+    input.required = Boolean(column.required || (!row && column.requiredOnCreate));
+    if (column.maxLength) input.maxLength = column.maxLength;
     input.value = original[column.key] ?? '';
     inputs.set(column.key, { input, initial: input.value });
     field.append(label, input);
     fields.append(field);
   }
-  editing = { name, columns, original, inputs };
-  editTitle.textContent = name === 'katering' ? 'Ubah katering' : 'Ubah murid';
+  editing = { name, columns, original, inputs, row };
+  editTitle.textContent = `${row ? 'Ubah' : 'Tambah'} ${descriptions[name].entry}`;
   editFields.replaceChildren(fields);
   editFeedback.hidden = true;
   editRefresh.hidden = true;
@@ -118,6 +124,8 @@ async function loadData(notice = '') {
   const requestedName = dataset;
   const requestedOffset = offset;
   updateSelection();
+  add.disabled = true;
+  add.onclick = null;
   results.setAttribute('aria-busy', 'true');
   status.dataset.state = 'loading';
   status.textContent = 'Memuat data…';
@@ -137,6 +145,8 @@ async function loadData(notice = '') {
     pageSize = data.pageSize;
     hasMore = data.hasMore === true;
     renderTable(requestedName, data.columns, data.rows);
+    add.onclick = () => openEditor(requestedName, data.columns);
+    add.disabled = false;
     tableWrap.hidden = data.rows.length === 0;
     status.dataset.state = 'ready';
     const summary = data.rows.length
@@ -185,7 +195,7 @@ editForm.addEventListener('submit', async (event) => {
     const { input, initial } = state.inputs.get(key);
     return [key, input.value === initial ? state.original[key] : input.value];
   }));
-  if (state.columns.every(({ key }) => values[key] === state.original[key])) {
+  if (state.row && state.columns.every(({ key }) => values[key] === state.original[key])) {
     editor.close();
     status.textContent = 'Tidak ada perubahan.';
     return;
@@ -199,9 +209,9 @@ editForm.addEventListener('submit', async (event) => {
   let saved = false;
   try {
     const response = await fetch(`/api/data/${state.name}`, {
-      method: 'PATCH',
+      method: state.row ? 'PATCH' : 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ original: state.original, values }),
+      body: JSON.stringify(state.row ? { id: state.row.id, original: state.original, values } : { values }),
       signal: controller.signal,
     });
     const data = await response.json();
@@ -224,7 +234,10 @@ editForm.addEventListener('submit', async (event) => {
     clearTimeout(timer);
     setSaving(false);
   }
-  if (saved) loadData('Data berhasil disimpan.');
+  if (saved) {
+    if (!state.row) offset = 0;
+    loadData('Data berhasil disimpan.');
+  }
 });
 
 for (const button of dataOptions) {

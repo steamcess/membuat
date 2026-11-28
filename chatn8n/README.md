@@ -9,7 +9,7 @@ Browser (HP/iPad, harus masuk Tailscale)
   │  http://100.110.217.94:3000
   ▼
 server.mjs — Node.js tanpa dependensi
-  ├─ GET/PATCH /api/data/{katering,murid} → PostgreSQL (lihat dan ubah)
+  ├─ GET/POST/PATCH /api/data/{katering,murid,layanan,pengetahuan} → PostgreSQL
   │  POST /api/chat + Basic Auth (password hanya di server)
   ▼
 Webhook n8n → workflow "Chatbot Internal - Gemini & Postgres"
@@ -20,6 +20,8 @@ Webhook n8n → workflow "Chatbot Internal - Gemini & Postgres"
        ├─ Postgres Chat Memory → n8n_chat_histories
        ├─ Cari Murid Sekolah → knowledge.murid
        ├─ Cari Katering Sekolah → knowledge.katering_sekolah
+       ├─ Cari Layanan Infrastruktur → knowledge.layanan_infrastruktur
+       ├─ Cari Pengetahuan → knowledge.pengetahuan
        └─ Tavily Search & Tavily Extract → pencarian dan baca halaman web
 ```
 
@@ -33,6 +35,8 @@ Browser tidak pernah bicara langsung ke n8n; semua lewat web server ini, dan cre
 | `server.mjs` | Web server untuk halaman chat dan data, API sesi dan data, serta `POST /api/chat` ke n8n |
 | `pg-client.mjs` | Klien PostgreSQL TCP wire-protocol murni Node.js (tanpa dependensi) dan pembaca tabel `n8n_chat_histories` |
 | `data.html`, `data.css`, `data.js`, `data-store.mjs` | Halaman `/data` dan akses PostgreSQL untuk melihat, menambah, dan mengubah data katering, murid, layanan, dan pengetahuan |
+| `db/pengetahuan.sql` | Struktur tabel pengetahuan yang dikelola melalui halaman `/data` |
+| `db/layanan_infrastruktur.sql` | Struktur tabel layanan infrastruktur; isi data disimpan di PostgreSQL, bukan di berkas ini |
 | `server.test.mjs` | Tes HTTP server dan klien PostgreSQL tiruan (tanpa credential, tanpa AI) |
 | `index.html`, `style.css`, `app.js` | Tampilan chat & panel daftar sesi: pilih sesi sebelumnya, tombol **Chat baru**, tombol **salin** per pesan, dan sakelar tampilan **Markdown** / **Preview** |
 | `favicon.svg` | Ikon tab browser bertema hijau terang (`>_`) |
@@ -81,7 +85,7 @@ Setelah laptop direstart, semuanya menyala sendiri: n8n dan PostgreSQL otomatis 
 
 ## Sisi n8n (workflow yang dihubungi)
 
-- Workflow **Chatbot Internal - Gemini & Postgres** (ID `EtZ8TjakWxnwNlCW`) menerima pesan lewat Chat Trigger dengan Basic Auth dan allowed origin `http://100.110.217.94:3000`. AI Agent memakai Google Gemini Chat Model, Postgres Chat Memory, dua tool PostgreSQL, dan dua HTTP Request Tool untuk Tavily. Chat Trigger mengirim respons setelah node terakhir.
+- Workflow **Chatbot Internal - Gemini & Postgres** (ID `EtZ8TjakWxnwNlCW`) menerima pesan lewat Chat Trigger dengan Basic Auth dan allowed origin `http://100.110.217.94:3000`. AI Agent memakai Google Gemini Chat Model, Postgres Chat Memory, empat tool PostgreSQL, dan dua HTTP Request Tool untuk Tavily. Chat Trigger mengirim respons setelah node terakhir.
 - **Tavily Search** (`POST https://api.tavily.com/search`) dan **Tavily Extract** (`POST https://api.tavily.com/extract`) memakai credential Bearer Auth Tavily (`httpBearerAuth`).
 - Tavily dipanggil lewat **HTTP Request Tool** dengan parameter `$fromAI(...)` (bukan `MCP Client Tool`) karena skema MCP bawaan Tavily memakai union `anyOf` / `const` yang ditolak oleh *function declarations* Google Gemini.
 - Balasan yang diharapkan web chat: JSON `{ "output": "..." }` dari akhir workflow.
@@ -98,18 +102,24 @@ Kirim email ke hardhy@gmail.com pesannya: sudah jadi chat berbasis web dan punya
 
 Node **Rute Perintah Email** memeriksa alamat dan isi pesan sebelum menjalankan **Kirim Email dari Chat**. Node tersebut memakai kredensial SMTP notifikasi yang sudah ada, dengan subjek **Pesan dari Chat n8n**. Chat menampilkan status pengiriman. Perintah email melewati jalur notifikasi otomatis, sedangkan pertanyaan biasa tetap masuk ke AI Agent.
 
-## Pengetahuan sekolah
+## Pengetahuan di PostgreSQL
 
-Dalam PostgreSQL, *schema* adalah pengelompokan atau namespace tabel; misalnya `knowledge.murid` berarti tabel `murid` di schema `knowledge`. Schema `knowledge` dipakai untuk data referensi murid dan katering, sedangkan `public` adalah schema default yang saat ini memuat `n8n_chat_histories`. Pemisahan schema tidak dengan sendirinya membentuk hubungan antar-tabel.
+Dalam PostgreSQL, *schema* adalah pengelompokan atau namespace tabel; misalnya `knowledge.murid` berarti tabel `murid` di schema `knowledge`. Schema `knowledge` dipakai untuk data referensi murid, katering, layanan infrastruktur, dan topik pengetahuan, sedangkan `public` adalah schema default yang saat ini memuat `n8n_chat_histories`. Pemisahan schema tidak dengan sendirinya membentuk hubungan antar-tabel.
 
-Kedua tabel berada di schema `knowledge` pada database PostgreSQL latihan. Isinya fiktif dan bisa dipakai dari sesi chat baru. Kedua tool PostgreSQL memakai credential n8n yang sama dengan **Postgres Chat Memory** dan menjalankan query `SELECT` dengan parameter kata kunci.
+Tabel murid dan katering berada di schema `knowledge` pada database PostgreSQL latihan. Isinya fiktif dan bisa dipakai dari sesi chat baru. Keempat tool PostgreSQL memakai credential n8n yang sama dengan **Postgres Chat Memory** dan menjalankan query `SELECT` dengan parameter kata kunci.
 
 | Tool n8n | Tabel | Data latihan | Pencarian |
 | --- | --- | --- | --- |
 | **Cari Murid Sekolah** | `knowledge.murid` | 10 murid kelas 1A SD, termasuk Dami. Kolomnya `kode_murid`, `nama`, `kelas`, `alamat`, `makanan_disukai`, dan `alergi`. | Nama, potongan nama, atau kode seperti `DUMMY-001`. |
 | **Cari Katering Sekolah** | `knowledge.katering_sekolah` | 3 penyedia fiktif, yaitu Dapur Pelangi, Bekal Tunas, dan Rantang Ceria. Kolomnya `nama_catering`, `alamat`, dan `contact_person`. | Nama atau potongan nama katering. |
 
-Kata kunci kosong mengambil seluruh daftar. Untuk membatasi jumlah baris yang diterima model, ubah query di node PostgreSQL dan terapkan `LIMIT` pada baris sebelum agregasi. Pilih kolom yang diperlukan di query untuk membatasi data yang dikirim ke model.
+Tool **Cari Layanan Infrastruktur** membaca `knowledge.layanan_infrastruktur`. Kolomnya `nama_layanan`, `fungsi`, `akses_laptop`, `akses_tailscale`, `auto_start`, dan `catatan`. Tabel ini menyimpan informasi lingkungan sendiri, termasuk catatan akses RustDesk; datanya dapat dilihat dan diubah melalui pilihan **Layanan** di `/data` atau ditanyakan lewat chat.
+
+Buka **Pengetahuan → Tambah topik** untuk menyimpan catatan dengan **Judul**, **Kategori** (opsional), dan **Isi**. Ketuk topik yang sudah ada untuk mengeditnya. Judul menerima hingga 200 karakter, kategori 100, dan isi 12.000. Tool **Cari Pengetahuan** mencari kata kunci di ketiga kolom dan mengambil hingga lima hasil. Kata kunci kosong menampilkan lima judul terbaru. Setelah topik tersimpan, AI dapat mencarinya dari sesi chat baru.
+
+Untuk pemasangan baru, jalankan `db/pengetahuan.sql` di database PostgreSQL aplikasi setelah schema `knowledge` tersedia. Workflow n8n perlu memiliki tool **Cari Pengetahuan** dengan akses baca ke `knowledge.pengetahuan`.
+
+Untuk tool murid, katering, dan layanan, kata kunci kosong mengambil seluruh daftar. Untuk membatasi jumlah baris yang diterima model, ubah query di node PostgreSQL dan terapkan `LIMIT` pada baris sebelum agregasi. Pilih kolom yang diperlukan di query untuk membatasi data yang dikirim ke model.
 
 Kolom di halaman `/data` ditentukan secara eksplisit dalam `data-store.mjs`. Kolom baru di PostgreSQL belum otomatis tampil: perbarui daftar kolom serta query baca dan ubah, sesuaikan tes, lalu mulai ulang layanan chat.
 

@@ -46,6 +46,9 @@ test('data API serves the viewer and lists only allowed datasets with validated 
       if (name === 'katering') {
         return { rows: [{ nama_catering: 'Dapur Contoh', alamat: 'Jalan Contoh', contact_person: 'Nina', secret: 'private' }], hasMore: true };
       }
+      if (name === 'layanan') {
+        return { rows: [{ nama_layanan: 'Layanan Uji', fungsi: 'Fungsi', akses_laptop: 'Lokal', akses_tailscale: 'Privat', auto_start: 'Ya', catatan: 'Catatan', secret: 'private' }], hasMore: false };
+      }
       return { rows: [{ kode_murid: 'A1', nama: 'Murid Contoh', kelas: '1A', alamat: null, makanan_disukai: 'Nasi', alergi: 'Ikan' }], hasMore: false };
     },
   };
@@ -65,7 +68,12 @@ test('data API serves the viewer and lists only allowed datasets with validated 
   const pupils = await fetch(`${origin}/api/data/murid`);
   assert.equal(pupils.status, 200);
   assert.equal((await pupils.json()).rows[0].alergi, 'Ikan');
-  assert.deepEqual(calls, [{ name: 'katering', offset: 50 }, { name: 'murid', offset: 0 }]);
+  const services = await fetch(`${origin}/api/data/layanan`);
+  assert.equal(services.status, 200);
+  const serviceData = await services.json();
+  assert.deepEqual(serviceData.columns.map((column) => column.key), ['nama_layanan', 'fungsi', 'akses_laptop', 'akses_tailscale', 'auto_start', 'catatan']);
+  assert.deepEqual(serviceData.rows, [{ nama_layanan: 'Layanan Uji', fungsi: 'Fungsi', akses_laptop: 'Lokal', akses_tailscale: 'Privat', auto_start: 'Ya', catatan: 'Catatan' }]);
+  assert.deepEqual(calls, [{ name: 'katering', offset: 50 }, { name: 'murid', offset: 0 }, { name: 'layanan', offset: 0 }]);
 
   for (const path of ['/api/data/n8n_chat_histories', '/api/data/__proto__']) {
     assert.equal((await fetch(`${origin}${path}`)).status, 404);
@@ -73,10 +81,10 @@ test('data API serves the viewer and lists only allowed datasets with validated 
   for (const query of ['offset=-1', 'offset=x', 'offset=1e3', 'offset=9007199254740992', 'offset=1&offset=2']) {
     assert.equal((await fetch(`${origin}/api/data/katering?${query}`)).status, 400);
   }
-  for (const method of ['POST', 'PUT', 'DELETE']) {
+  for (const method of ['PUT', 'DELETE']) {
     assert.equal((await fetch(`${origin}/api/data/katering`, { method })).status, 405);
   }
-  assert.equal(calls.length, 2);
+  assert.equal(calls.length, 3);
 
   const unconfigured = await listen(createChatServer({ webhookUrl: 'http://127.0.0.1:1', authorization: 'Basic x' }), t);
   assert.equal((await fetch(`${unconfigured}/api/data/katering`)).status, 503);
@@ -134,6 +142,15 @@ test('data update validates origin, payload, conflicts, and only permits approve
   const failed = await request({ original: { ...original, nama_catering: 'failure' }, values });
   assert.equal(failed.status, 502);
   assert.ok(!JSON.stringify(await failed.json()).includes('private database detail'));
+  const service = { nama_layanan: 'Layanan Uji', fungsi: 'Fungsi', akses_laptop: 'Lokal', akses_tailscale: 'Privat', auto_start: 'Ya', catatan: 'Catatan awal' };
+  const updatedService = { ...service, catatan: 'Catatan baru' };
+  const serviceResponse = await fetch(`${origin}/api/data/layanan`, {
+    method: 'PATCH', headers: { Origin: origin, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ original: service, values: updatedService }),
+  });
+  assert.equal(serviceResponse.status, 200);
+  assert.deepEqual(await serviceResponse.json(), { row: updatedService });
+  assert.deepEqual(calls.at(-1), { name: 'layanan', original: service, values: updatedService });
 
   const unconfigured = await listen(createChatServer({ webhookUrl: 'http://127.0.0.1:1', authorization: 'Basic x' }), t);
   assert.equal((await fetch(`${unconfigured}/api/data/katering`, {
@@ -157,6 +174,10 @@ test('data store uses fixed queries, limits each page, and binds old and new val
   assert.match(calls[1].sql, /^\s*SELECT\b/i);
   assert.match(calls[1].sql, /FROM knowledge\.murid\b/);
   assert.deepEqual(calls[1].params, [DATA_PAGE_SIZE + 1, 0]);
+  await store.listData('layanan', 0);
+  assert.match(calls[2].sql, /^\s*SELECT\b/i);
+  assert.match(calls[2].sql, /FROM knowledge\.layanan_infrastruktur\b/);
+  assert.deepEqual(calls[2].params, [DATA_PAGE_SIZE + 1, 0]);
   const original = { nama_catering: 'Dapur Lama', alamat: 'Alamat Lama', contact_person: 'Nina' };
   const values = { nama_catering: 'Dapur Baru', alamat: 'Alamat Baru', contact_person: 'Nina' };
   const updateCalls = [];
@@ -169,9 +190,19 @@ test('data store uses fixed queries, limits each page, and binds old and new val
   assert.match(updateCalls[0].sql, /\(SELECT count\(\*\) FROM matching\) = 1/);
   assert.deepEqual(updateCalls[0].params, ['Dapur Baru', 'Alamat Baru', 'Nina', 'Dapur Lama', 'Alamat Lama', 'Nina']);
   assert.ok(!updateCalls[0].sql.includes('Dapur Lama'));
+  const service = { nama_layanan: 'Layanan Uji', fungsi: 'Fungsi', akses_laptop: 'Lokal', akses_tailscale: 'Privat', auto_start: 'Ya', catatan: '' };
+  const serviceUpdate = { ...service, catatan: 'Keterangan' };
+  const serviceCalls = [];
+  const serviceStore = createPostgresDataStore({ host: 'test' }, async (config, sql, params) => {
+    serviceCalls.push({ sql, params });
+    return [serviceUpdate];
+  });
+  assert.deepEqual(await serviceStore.updateData('layanan', service, serviceUpdate), serviceUpdate);
+  assert.match(serviceCalls[0].sql, /UPDATE knowledge\.layanan_infrastruktur\b/);
+  assert.deepEqual(serviceCalls[0].params, ['Layanan Uji', 'Fungsi', 'Lokal', 'Privat', 'Ya', 'Keterangan', 'Layanan Uji', 'Fungsi', 'Lokal', 'Privat', 'Ya', '']);
   await assert.rejects(store.listData('n8n_chat_histories', 0), RangeError);
   await assert.rejects(store.listData('katering', -1), RangeError);
-  assert.equal(calls.length, 2);
+  assert.equal(calls.length, 3);
 });
 
 test('chat rejects other origins, invalid sessions, invalid JSON, and oversized bodies without forwarding', async (t) => {
